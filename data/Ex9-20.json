@@ -1,0 +1,14 @@
+{
+	"Freq":[
+		9.26e2,
+		2.93e2,
+		2.88e2,
+		1.04e2
+	],
+	"Type":[
+		"TallCut",
+		"DwarfCt",
+		"TallPot",
+		"DwarfPt"
+	]
+}

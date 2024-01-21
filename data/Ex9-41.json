@@ -1,0 +1,22 @@
+{
+	"WVDYes":[
+		1.9e1,
+		1.1e1
+	],
+	"WVDNo":[
+		1.32e2,
+		5.2e1
+	],
+	"BVDYes":[
+		0.0,
+		6.0
+	],
+	"BVDNo":[
+		9.0,
+		9.7e1
+	],
+	"Group":[
+		"WDefend",
+		"BDefend"
+	]
+}

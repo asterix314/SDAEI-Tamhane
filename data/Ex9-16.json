@@ -1,0 +1,14 @@
+{
+	"AftPro":[
+		2.0,
+		2.6e1
+	],
+	"AftCon":[
+		8.0,
+		1.6e1
+	],
+	"Group":[
+		"BefPro",
+		"BefCon"
+	]
+}
