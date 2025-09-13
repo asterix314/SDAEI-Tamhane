@@ -10,9 +10,96 @@ def _(mo):
     return
 
 
+@app.cell
+def _():
+    import marimo as mo
+    import polars as pl
+    return mo, pl
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""## 10.1 A Probabilistic Model for Simple Linear Regression""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.1
+
+    Tell whether the following mathematical models are theoretical and deterministic or empirical and probabilistic.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.accordion(
+        {
+            "1. **Maxwell's equations of electromagnetism.**": "theoretical and deterministic",
+            "2. **An econometric model of the U.S. economy.**": "empirical and probabilistic",
+            "3. **A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc.**": "empirical and probabilistic",
+        },
+        multiple=True,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.2
+
+    Tell whether the following mathematical models are theoretical and deterministic or empirical and probabilistic.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.accordion(
+        {
+            """1. ***An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.**""": "empirical and probabilistic",
+            "2. **The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs.**": "empirical and probabilistic",
+            "3. **Kepler's laws of planetary motion.**": "theoretical and deterministic",
+        },
+        multiple=True,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.3
+
+    Give an example of an experimental study in which the explanatory variable is controlled at fixed values, while the response variable is random. Also, give an example of an observational study in which both variables are uncontrolled and random.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.accordion(
+        {
+            "- **Controlled explanatory variable at fixed values**": "temperatures in the day as a function of the hours 1h, 2h, ...",
+            "- **Both uncontrolled**": "humidity as a function of temperature.",
+        },
+        multiple=True,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## 10.2 Fitting the Simple Linear Regression Model""")
     return
 
 
@@ -50,16 +137,61 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(mo, pl):
+    df_10_4 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
+
+    mo.vstack(
+        [
+            mo.md(
+                r"""
+    ### Ex 10.4
+
+    The time between eruptions of Old Faithful geyser in Yellowstone National Park is random but is related to the duration of the last eruption. The table below shows these times for 21 consecutive eruptions.
+    """
+            ),
+            mo.ui.table(
+                df_10_4.rename(
+                    {
+                        "No": "Obs.\nNo.",
+                        "LAST": "Duration of Eruption\n(LAST)",
+                        "NEXT": "Time Between Eruptions\n(NEXT)",
+                    }
+                ),
+                label="Old Faithful Eruptions: Duration and Time Between Eruptions",
+            ),
+            mo.md(
+                r"""Let us see how well we can predict the time to next eruption, given the length of time of the last eruption."""
+            ),
+        ],
+    )
+    return (df_10_4,)
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
-    ### Ex 10.1
+    #### (a) 
 
-    Tell whether the following mathematical models are theoretical and deterministic or empirical and probabilistic.
+    Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
+    """
+    )
+    return
 
-    1. Maxwell's equations of electromagnetism. ✍️ theoretical / deterministic
-    2. An econometric model of the U.S. economy. ✍️ empirical / probabilistic
-    3. A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc. ✍️ empirical / probabilistic
+
+@app.cell
+def _(df_10_4):
+    df_10_4.plot.point(x="LAST",y="NEXT")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    #### (b) 
+
+    Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
     """
     )
     return
@@ -69,13 +201,9 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    ### Ex 10.2
+    #### (c) 
 
-    Tell whether the following mathematical models are theoretical and deterministic or empirical and probabilistic.
-
-    1. An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.  ✍️ empirical / probabilistic
-    2. The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs. ✍️ empirical / probabilistic
-    3. Kepler's laws of planetary motion. ✍️ theoretical / deterministic
+    What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
     """
     )
     return
@@ -85,17 +213,11 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    ### Ex 10.3
+    #### (d)
 
-    Give an example of an experimental study in which the explanatory variable is controlled at fixed values, while the response variable is random. Also, give an example of an observational study in which both variables are uncontrolled and random.
+    Calculate the mean square error estimate of $\sigma$.
     """
     )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""## 10.2 Fitting the Simple Linear Regression Model""")
     return
 
 
@@ -121,12 +243,6 @@ def _(mo):
 def _(mo):
     mo.md(r"""## 10.6 Pitfalls of Regression and Correlation Analysis""")
     return
-
-
-@app.cell
-def _():
-    import marimo as mo
-    return (mo,)
 
 
 @app.cell(hide_code=True)
