@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.15.3"
+__generated_with = "0.15.2"
 app = marimo.App(width="medium")
 
 
@@ -10,11 +10,23 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     import marimo as mo
     import polars as pl
-    return mo, pl
+    import altair as alt
+    from scipy import stats
+
+    import inspect
+
+
+    def get_source(func) -> str:
+        """Display a function's source code as markdown"""
+        source = inspect.getsource(func)
+        return f"""```python
+    {source}
+    ```"""
+    return alt, get_source, mo, pl
 
 
 @app.cell(hide_code=True)
@@ -39,9 +51,9 @@ def _(mo):
 def _(mo):
     mo.accordion(
         {
-            "1. **Maxwell's equations of electromagnetism.**": "theoretical and deterministic",
-            "2. **An econometric model of the U.S. economy.**": "empirical and probabilistic",
-            "3. **A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc.**": "empirical and probabilistic",
+            "1. Maxwell's equations of electromagnetism.": "theoretical and deterministic",
+            "2. An econometric model of the U.S. economy.": "empirical and probabilistic",
+            "3. A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc.": "empirical and probabilistic",
         },
         multiple=True,
     )
@@ -64,9 +76,9 @@ def _(mo):
 def _(mo):
     mo.accordion(
         {
-            """1. ***An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.**""": "empirical and probabilistic",
-            "2. **The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs.**": "empirical and probabilistic",
-            "3. **Kepler's laws of planetary motion.**": "theoretical and deterministic",
+            '''1. An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.''': "empirical and probabilistic",
+            "2. The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs.": "empirical and probabilistic",
+            "3. Kepler's laws of planetary motion.": "theoretical and deterministic",
         },
         multiple=True,
     )
@@ -87,12 +99,11 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.accordion(
-        {
-            "- **Controlled explanatory variable at fixed values**": "temperatures in the day as a function of the hours 1h, 2h, ...",
-            "- **Both uncontrolled**": "humidity as a function of temperature.",
-        },
-        multiple=True,
+    mo.md(
+        r"""
+    - Controlled explanatory variable at fixed values: temperatures in the day as a function of the hours 1h, 2h, ...
+    - Both uncontrolled: humidity as a function of temperature.
+    """
     )
     return
 
@@ -105,8 +116,9 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.callout(
+        mo.md(
+            r"""
     *Linear regression analysis* begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The *least squares(LS) estimates* $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
 
     $$
@@ -132,66 +144,197 @@ def _(mo):
     \mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.
     $$
     """
+        ),
+        kind="info",
     )
     return
 
 
 @app.cell(hide_code=True)
 def _(mo, pl):
-    df_10_4 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
+    df_ex4 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
 
-    mo.vstack(
-        [
-            mo.md(
-                r"""
+
+    def _rename_df(df: pl.DataFrame) -> pl.DataFrame:
+        return df.rename(
+            {
+                "No": "Obs.\nNo.",
+                "LAST": "Duration of Eruption\n(LAST)",
+                "NEXT": "Time Between Eruptions\n(NEXT)",
+            }
+        )
+
+
+    mo.md(
+        f"""
     ### Ex 10.4
 
     The time between eruptions of Old Faithful geyser in Yellowstone National Park is random but is related to the duration of the last eruption. The table below shows these times for 21 consecutive eruptions.
-    """
-            ),
+
+    {
             mo.ui.table(
-                df_10_4.rename(
-                    {
-                        "No": "Obs.\nNo.",
-                        "LAST": "Duration of Eruption\n(LAST)",
-                        "NEXT": "Time Between Eruptions\n(NEXT)",
-                    }
-                ),
+                _rename_df(df_ex4),
                 label="Old Faithful Eruptions: Duration and Time Between Eruptions",
-            ),
-            mo.md(
-                r"""Let us see how well we can predict the time to next eruption, given the length of time of the last eruption."""
-            ),
-        ],
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False,
+            )
+        }
+
+    Let us see how well we can predict the time to next eruption, given the length of time of the last eruption."""
     )
-    return (df_10_4,)
+    return (df_ex4,)
+
+
+@app.cell(hide_code=True)
+def _(alt, df_ex4, mo):
+    _chart = df_ex4.plot.scatter(
+        alt.X("LAST").scale(domain=[1, 5.5]),
+        alt.Y("NEXT").scale(domain=[30, 100]),
+    )
+
+    mo.md(
+        f"""
+    /// details | (a) Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
+
+    {mo.as_html(_chart)}
+
+    Yes, the points appear approximately linear.
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(alt, df_ex4, get_source, mo, pl):
+    def _linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
+        sxx = ((x - x.mean()) ** 2).sum()
+        syy = ((y - y.mean()) ** 2).sum()
+        sxy = ((x - x.mean()) * (y - y.mean())).sum()
+        b1 = sxy / sxx
+        b0 = y.mean() - x.mean() * b1
+        return pl.struct(b0.alias("β0"), b1.alias("β1"))
+
+
+    _β = df_ex4.select(_linreg(pl.col("LAST"), pl.col("NEXT")).struct.unnest())
+    _β0, _β1 = _β[0, "β0"], _β[0, "β1"]
+
+
+    _chart_scatter = df_ex4.plot.scatter(
+        alt.X("LAST").scale(domain=[1, 5.5]),
+        alt.Y("NEXT").scale(domain=[30, 100]),
+    )
+
+    _chart_regression = _chart_scatter.transform_regression(
+        "LAST", "NEXT"
+    ).mark_line(color="red")
+
+    mo.md(
+        r"""
+    /// details | (b) Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
+
+    The formulas
+
+    $$
+    \begin{align*}
+    \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x}\\
+    \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}}
+    \end{align*}
+    $$
+
+    translate directly into the polars expressions"""
+        rf"""
+    {get_source(_linreg)}
+
+    yielding $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in 
+
+    $$
+    \beta_0 + \beta_1 \cdot 3 =
+        {_β0:.2f} + {_β1:.2f} \cdot 3 = {_β0 + _β1 * 3:.2f}
+    $$
+
+    minutes.
+
+    {mo.as_html(_chart_scatter + _chart_regression)}
+
+    ///"""
+    )
+    return
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
-    #### (a) 
+    /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
 
-    Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (d) Calculate the mean square error estimate of $\sigma$.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_5 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-5.json").explode(pl.all())
+
+    mo.md(
+        f"""
+    ### Ex 10.5
+
+    The data below show Olympic triple jump winning distances for men in meters for
+    the years 1896 to 1992 (there were no Olympic games in 1916, 1940, and 1944).
+
+    {
+            mo.ui.table(
+                df_5,
+                label="Men's Olympic Triple Jump Winning Distance (in meters)",
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False
+            )
+        }
+    """
+    )
+    return (df_5,)
+
+
+@app.cell
+def _(df_5, mo):
+    mo.md(
+        f"""
+    /// details | (a) Make a scatter plot of the length of the jump by year. Does the relationship appear to be approximately linear?
+
+    {mo.as_html(df_5.plot.circle(x="Year", y="Distance"))}
+
+    Yes, the points appear approximately linear.
+    ///
     """
     )
     return
 
 
 @app.cell
-def _(df_10_4):
-    df_10_4.plot.point(x="LAST",y="NEXT")
-    return
-
-
-@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
-    #### (b) 
+    /// details | (b) Fit a least squares regression line.
 
-    Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
+    ///
     """
     )
     return
@@ -201,21 +344,9 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    #### (c) 
+    /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
-    """
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    #### (d)
-
-    Calculate the mean square error estimate of $\sigma$.
+    ///
     """
     )
     return
