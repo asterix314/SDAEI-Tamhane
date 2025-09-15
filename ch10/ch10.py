@@ -208,18 +208,21 @@ def _(alt, df_ex4, mo):
 
 @app.cell(hide_code=True)
 def _(alt, df_ex4, get_source, mo, pl):
-    def _linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
+    def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
+        n = x.len()
         sxx = ((x - x.mean()) ** 2).sum()
         syy = ((y - y.mean()) ** 2).sum()
         sxy = ((x - x.mean()) * (y - y.mean())).sum()
-        b1 = sxy / sxx
-        b0 = y.mean() - x.mean() * b1
-        return pl.struct(b0.alias("β0"), b1.alias("β1"))
+        β1 = sxy / sxx
+        β0 = y.mean() - x.mean() * β1
+        r2 = sxy**2 / (sxx * syy)
+        s2 = (syy - β1**2 * sxx) / (n - 2)
+        return pl.struct(
+            β0.alias("β0"), β1.alias("β1"), r2.alias("r2"), s2.alias("s2")
+        )
 
 
-    _β = df_ex4.select(_linreg(pl.col("LAST"), pl.col("NEXT")).struct.unnest())
-    _β0, _β1 = _β[0, "β0"], _β[0, "β1"]
-
+    _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
 
     _chart_scatter = df_ex4.plot.scatter(
         alt.X("LAST").scale(domain=[1, 5.5]),
@@ -238,20 +241,22 @@ def _(alt, df_ex4, get_source, mo, pl):
 
     $$
     \begin{align*}
+    \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}} \\
     \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x}\\
-    \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}}
+    r^2 &= \frac{S_{xy}^2}{S_{xx} S_{yy}} \\
+    s^2 &= \frac{\textrm{SSE}}{n-2} = \frac{S_{yy} - \hat{\beta}_1^2 S_{xx}}{n-2}
     \end{align*}
     $$
 
     translate directly into the polars expressions"""
         rf"""
-    {get_source(_linreg)}
+    {get_source(linreg)}
 
-    yielding $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in 
+    yielding $\beta_0$ = {_res['β0']:.2f} and $\beta_1$ = {_res['β1']:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in 
 
     $$
     \beta_0 + \beta_1 \cdot 3 =
-        {_β0:.2f} + {_β1:.2f} \cdot 3 = {_β0 + _β1 * 3:.2f}
+        {_res['β0']:.2f} + {_res['β1']:.2f} \cdot 3 = {_res['β0'] + _res['β1'] * 3:.2f}
     $$
 
     minutes.
@@ -260,15 +265,18 @@ def _(alt, df_ex4, get_source, mo, pl):
 
     ///"""
     )
-    return
+    return (linreg,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(df_ex4, linreg, mo, pl):
+    _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
+
     mo.md(
-        r"""
+        rf"""
     /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
 
+    Also using the `linreg` function, $r^2$ = {_res['r2']:.2f}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
 
     ///
     """
@@ -277,10 +285,15 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(df_ex4, linreg, mo, pl):
+    _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
+
+
     mo.md(
-        r"""
+        rf"""
     /// details | (d) Calculate the mean square error estimate of $\sigma$.
+
+    Also using the `linreg` function, $s^2$ = {_res['s2']:.2f}, and the mean square error estimate of $\sigma$ is $s$ = {_res['s2'] ** 0.5:.2f}.
 
     ///
     """
@@ -290,18 +303,17 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo, pl):
-    df_5 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-5.json").explode(pl.all())
+    df_ex5 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-5.json").explode(pl.all())
 
     mo.md(
         f"""
     ### Ex 10.5
 
-    The data below show Olympic triple jump winning distances for men in meters for
-    the years 1896 to 1992 (there were no Olympic games in 1916, 1940, and 1944).
+    The data below show Olympic triple jump winning distances for men in meters for the years 1896 to 1992 (there were no Olympic games in 1916, 1940, and 1944).
 
     {
             mo.ui.table(
-                df_5,
+                df_ex5,
                 label="Men's Olympic Triple Jump Winning Distance (in meters)",
                 show_column_summaries=False,
                 selection=None,
@@ -310,16 +322,21 @@ def _(mo, pl):
         }
     """
     )
-    return (df_5,)
+    return (df_ex5,)
 
 
-@app.cell
-def _(df_5, mo):
+@app.cell(hide_code=True)
+def _(alt, df_ex5, mo):
+    _chart = df_ex5.plot.scatter(
+        alt.X("Year").scale(domain=[1890, 2000]),
+        alt.Y("Distance").scale(domain=[12, 20]),
+    )
+
     mo.md(
         f"""
     /// details | (a) Make a scatter plot of the length of the jump by year. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(df_5.plot.circle(x="Year", y="Distance"))}
+    {mo.as_html(_chart)}
 
     Yes, the points appear approximately linear.
     ///
@@ -328,23 +345,42 @@ def _(df_5, mo):
     return
 
 
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-    /// details | (b) Fit a least squares regression line.
+@app.cell(hide_code=True)
+def _(alt, df_ex5, linreg, mo, pl):
+    _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
 
-    ///
-    """
+    _chart_scatter = df_ex5.plot.scatter(
+        alt.X("Year").scale(domain=[1890, 2000]),
+        alt.Y("Distance").scale(domain=[12, 20]),
+    )
+
+    _chart_regression = _chart_scatter.transform_regression(
+        "Year", "Distance"
+    ).mark_line(color="red")
+
+    mo.md(
+        rf"""
+    /// details |  (b) Fit a least squares regression line.
+
+    Using `linreg`, $\beta_0$ = {_res['β0']:.2f} and $\beta_1$ = {_res['β1']:.3f}.
+
+    {mo.as_html(_chart_scatter + _chart_regression)}
+
+    ///"""
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(df_ex5, linreg, mo, pl):
+    _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
+
+
     mo.md(
-        r"""
+        rf"""
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
+
+    Also using the `linreg` function, $s^2$ = {_res['s2']:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res['s2'] ** 0.5:.3f}.
 
     ///
     """
