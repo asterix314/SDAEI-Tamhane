@@ -326,10 +326,10 @@ def _(mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex5, mo):
-    _chart = df_ex5.plot.scatter(
-        alt.X("Year").scale(domain=[1890, 2000]),
-        alt.Y("Distance").scale(domain=[12, 20]),
+def _(alt, df_ex5, mo, pl):
+    _chart = df_ex5.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+        alt.X("Year:T"), # .scale(domain=[(1890,1,1), (2000,1,1)]),
+        alt.Y("Distance").scale(domain=[13, 19]),
     )
 
     mo.md(
@@ -349,9 +349,9 @@ def _(alt, df_ex5, mo):
 def _(alt, df_ex5, linreg, mo, pl):
     _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
 
-    _chart_scatter = df_ex5.plot.scatter(
-        alt.X("Year").scale(domain=[1890, 2000]),
-        alt.Y("Distance").scale(domain=[12, 20]),
+    _chart_scatter = df_ex5.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+        alt.X("Year:T"), # .scale(domain=[(1890,1,1), (2000,1,1)]),
+        alt.Y("Distance").scale(domain=[13, 19]),
     )
 
     _chart_regression = _chart_scatter.transform_regression(
@@ -381,6 +381,183 @@ def _(df_ex5, linreg, mo, pl):
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
     Also using the `linreg` function, $s^2$ = {_res['s2']:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res['s2'] ** 0.5:.3f}.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_ex6 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-6.json").explode(pl.all())
+
+    mo.md(
+        f"""
+    ### Ex 10.6
+
+    The following data give the barometric pressure (in inches of mercury) and the boiling point (in °F) of water in the Alps.
+
+    {
+            mo.ui.table(
+                df_ex6,
+                label="Boiling Point of Water in the Alps",
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False
+            )
+        }
+
+    """
+    )
+    return (df_ex6,)
+
+
+@app.cell(hide_code=True)
+def _(alt, df_ex6, mo):
+    _chart = df_ex6.plot.scatter(
+        alt.X("Pressure").scale(domain=[20, 31]),
+        alt.Y("Temp").scale(domain=[192, 215]),
+    )
+
+    mo.md(
+        f"""
+    /// details | (a) Make a scatter plot of the boiling point by barometric pressure. Does the relationship appear to be approximately linear?
+
+    {mo.as_html(_chart)}
+
+    Yes, the relationship is approximately linear.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(alt, df_ex6, linreg, mo, pl):
+    _res = df_ex6.select(linreg(pl.col("Pressure"), pl.col("Temp"))).item()
+
+    _chart_scatter = df_ex6.plot.scatter(
+        alt.X("Pressure").scale(domain=[20, 31]),
+        alt.Y("Temp").scale(domain=[192, 215]),
+    )
+
+    _chart_regression = _chart_scatter.transform_regression(
+        "Pressure", "Temp"
+    ).mark_line(color="red")
+
+    mo.md(
+        rf"""
+    /// details | (b) Fit a least squares regression line. What proportion of variation in the boiling point is accounted for by linear regression on the barometric pressure?
+
+    Using `linreg`, $\beta_0$ = {_res['β0']:.2f}, $\beta_1$ = {_res['β1']:.3f}, and $r^2$ = {_res['r2']:.3f}. That is, {_res['r2'] * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
+
+    {mo.as_html(_chart_scatter + _chart_regression)}
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex6, linreg, mo, pl):
+    _res = df_ex6.select(linreg(pl.col("Pressure"), pl.col("Temp"))).item()
+
+    mo.md(
+        rf"""
+    /// details | (c) Calculate the mean square error estimate of $\sigma$.
+
+    Also using the `linreg` function, $s^2$ = {_res["s2"]:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res["s2"] ** 0.5:.3f}.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_ex7 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-7.json").explode(pl.all())
+
+    mo.md(
+        f"""
+    ### Ex 10.7
+
+    The following table shows Olympic 100 meter backstroke winning times for women for the years 1924 to 1992 (there were no Olympic games in 1940 and 1944).
+
+    {
+            mo.ui.table(
+                df_ex7,
+                label="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)",
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False,
+            )
+        }
+    """
+    )
+    return (df_ex7,)
+
+
+@app.cell(hide_code=True)
+def _(alt, df_ex7, mo, pl):
+    _chart = df_ex7.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+        alt.X("Year:T"),
+        alt.Y("Time").scale(domain=[55, 90]),
+    )
+
+    mo.md(
+        f"""
+    /// details | (a) Make a scatter plot of the winning times by year. Does the relationship appear to be approximately linear?
+
+    {mo.as_html(_chart)}
+
+    Yes, the relationship is approximately linear.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell
+def _(alt, df_ex7, linreg, mo, pl):
+    _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
+
+    _chart_scatter = df_ex7.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+        alt.X("Year:T"),
+        alt.Y("Time").scale(domain=[55, 90]),
+    )
+
+    _chart_regression = _chart_scatter.transform_regression(
+        "Year", "Time"
+    ).mark_line(color="red")
+
+    mo.md(
+        rf"""
+    /// details | (b) Fit a least squares regression line.
+
+    Using `linreg`, $\beta_0$ = {_res['β0']:.1f} and $\beta_1$ = {_res['β1']:.3f}.
+
+    {mo.as_html(_chart_scatter + _chart_regression)}
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex7, linreg, mo, pl):
+    _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
+
+    mo.md(
+        rf"""
+    /// details | (c) Calculate the mean square error estimate of $\sigma$.
+
+    Also using the `linreg` function, $s^2$ = {_res["s2"]:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res["s2"] ** 0.5:.3f}.
 
     ///
     """
