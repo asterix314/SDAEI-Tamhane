@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.15.2"
+__generated_with = "0.15.5"
 app = marimo.App(width="medium")
 
 
@@ -32,6 +32,29 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""## 10.1 A Probabilistic Model for Simple Linear Regression""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.callout(
+        mo.md(
+            r"""
+    _Linear regression analysis_ begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The linear regression model
+
+    $$
+    Y_i = \beta_0 + \beta_1 x_i + \epsilon_i\ (i=1,2, \ldots, n)
+    $$
+
+    has these basic assumptions:
+
+    1. The predictor variable $x$ is regarded as nonrandom because it is assumed to be set by the investigator.
+    2. The mean of $Y_i$ is a linear function of $x_i$.
+    3. The errors $\epsilon_i$ are i.i.d. normal.
+    """
+        ),
+        kind="info",
+    )
     return
 
 
@@ -119,7 +142,7 @@ def _(mo):
     mo.callout(
         mo.md(
             r"""
-    *Linear regression analysis* begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The *least squares(LS) estimates* $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
+    The _least squares(LS) estimates_ $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
 
     $$
     \begin{align*}
@@ -138,11 +161,7 @@ def _(mo):
 
     which represents the proportion of variation in $y$ that is accounted for by regression on $x$. The *correlation coefficient* $r$ equals $\pm\sqrt{r^2}$, where $\mathrm{sign}(r) = \mathrm{sign}(\hat{\beta}_1)$. In fact, $r = \hat{\beta}_1 (s_x / s_y)$, where $s_x$ and $s_y$ are the sample standard deviations of $x$ and $y$, respectively.
 
-    The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f. The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
-
-    $$
-    \mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.
-    $$
+    The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f.
     """
         ),
         kind="info",
@@ -252,7 +271,7 @@ def _(alt, df_ex4, get_source, mo, pl):
         rf"""
     {get_source(linreg)}
 
-    yielding $\beta_0$ = {_res['β0']:.2f} and $\beta_1$ = {_res['β1']:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in 
+    yielding $\beta_0$ = {_res['β0']:.2f} and $\beta_1$ = {_res['β1']:.2f} when applied to the dataset. If the last eruption lasted 3 minutes, the time to the next eruption would be in 
 
     $$
     \beta_0 + \beta_1 \cdot 3 =
@@ -522,7 +541,7 @@ def _(alt, df_ex7, mo, pl):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(alt, df_ex7, linreg, mo, pl):
     _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
 
@@ -567,7 +586,154 @@ def _(df_ex7, linreg, mo, pl):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.8
+
+    Often the conditions of the problem dictate that the intercept coefficient $\beta_0$ must be zero, e.g., the sales revenue as a function of the number of units sold or the gas mileage of a car as a function of the weight of the car. This is called _regression through the origin_. Show that the LS estimate of the slope coefficient $\beta_1$ when fitting the straight line $y = \beta_1 x$ based on the data $(x_1, y_1), (x_2, y_2), \ldots, (x_n, y_n)$ is
+
+    $$
+    \beta_1 = \frac{\sum x_i y_i}{\sum x_i^2}.
+    $$
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    To find the minumum of the sum of errors
+
+    $$
+    Q = \sum (\beta_1 x_i - y_i)^2,
+    $$
+
+    we take its derivative with respect to $\beta_1$.
+
+    $$ \begin{align*} 
+    \frac{\partial Q}{\partial \beta_1} &= \sum 2x_i(\beta_1 x_i - y_i)\\
+    &= 2\sum \beta_1 x_i^2 - x_i y_i
+    \end{align*}
+    $$
+
+    Therefore the minimum is taken at
+
+    $$
+    \beta_1 = \frac{\sum x_i^2}{\sum x_i y_i}.
+    $$
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""## 10.3 Statistical Inference for Simple Linear Regression""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.callout(
+        mo.md(
+            r"""
+    The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
+
+    $$
+    \mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.
+    $$
+
+    These are used to construct confidence intervals and perform hypothesis tests on $\beta_0$ and $\beta_1$. For example, a $100(1-\alpha)$% confidence interval on $\beta_1$ is given by
+
+    $$
+    \hat{\beta_1} \pm t_{n-2, \alpha/2}\,\textrm{SE}(\hat{\beta_1}).
+    $$
+
+    A common use of the fitted regression model is to _predict_ $Y^*$ for specified $x = x^*$ or to _estimate_ $\mu^* = \textrm{E}(Y^*)$. In both cases we have
+
+    $$
+    \hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.
+    $$
+
+    However, a $100(1-\alpha)$% _prediction_ interval for $Y^*$ is wider than a $100(1-\alpha)$% confidence interval for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
+    """
+        ),
+        kind="info",
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.9
+
+    Refer to Exercise 10.5.
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Is there a significant increasing linear trend in the triple jump distance? Test at $\alpha = .05$.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Calculate a 95% PI for the winning jump in 2004. Do you think this prediction is reliable? Why or why not? Would a 95% CI for the winning jump in 2004 have a meaningful interpretation? Explain.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.10
+
+    Refer to Exercise 10.6.
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Calculate a 95% CI for the boiling point if the barometric pressure is 28 inches of mercury. Interpret your CI.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Calculate a 95% CI for the boiling point if the barometric pressure is 31 inches of mercury. Compare this with the CI of (a).
+
+    ///
+    """
+    )
     return
 
 
@@ -577,9 +743,42 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.callout(
+        mo.md(
+            r"""Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways."""
+        ),
+        kind="info",
+    )
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""## 10.5 *Correlation Analysis""")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    _Correlation analysis_ assumes that the data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ form a random sample from a _bivariate normal distribution_ with correlation coefficient $\rho$. An estimate of $\rho$ is the sample correlation coefficient $r$. An exact test of $H_0: \rho = 0$ is a $t$-test with $n-2$ d.f. based on the test statistic
+
+    $$
+    t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}}.
+    $$
+
+    This equals $t = \hat{\beta}_1 / \textrm{SE}(\hat{\beta}_1)$ which is used to test $H_0: \beta_1 = 0$ in the related regression model. In other cases only approximate large sample inferences are available. These inferences use the parameterization
+
+    $$
+    \psi = \frac{1}{2}\log_e \left(\frac{1+\rho}{1-\rho}\right).
+    $$
+
+    The sample estimate $\hat{\psi}$ of $\psi$, obtained by substituting $\hat{\rho} = r$ in the above expression, is approximately normally distributed with mean=$\frac{1}{2}\log_e (\frac{1+\rho}{1-\rho})$ and variance=$\frac{1}{n-3}$.
+    """
+    )
     return
 
 
