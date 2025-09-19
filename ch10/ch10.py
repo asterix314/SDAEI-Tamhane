@@ -806,7 +806,7 @@ def _(df_ex6, linreg, mo, pl, stats):
 
     _y = _res["β0"] + _res["β1"] * _x
     _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_ci_low, _ci_high] = [
+    [_low, _high] = [
         _y - _t_star * _res["se_est_ci"],
         _y + _t_star * _res["se_est_ci"],
     ]
@@ -816,7 +816,139 @@ def _(df_ex6, linreg, mo, pl, stats):
         rf"""
     /// details | (b) Calculate a 95% CI for the boiling point if the barometric pressure is 31 inches of mercury. Compare this with the CI of (a).
 
-    The said CI is calculated to be [{_ci_low:.2f}, {_ci_high:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
+    The said CI is calculated to be [{_low:.2f}, {_high:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.11
+
+    Refer to the Old Faithful data in Exercise 10.4.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex4, linreg, mo, pl, stats):
+    _x = 3
+    _α = 0.05
+    _res = df_ex4.select(
+        linreg(pl.col("LAST"), pl.col("NEXT"), x_star=_x)
+    ).item()
+    _n = df_ex4.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_low, _high] = [
+        _y - _t_star * _res["se_est_pi"],
+        _y + _t_star * _res["se_est_pi"],
+    ]
+
+
+    mo.md(
+        rf"""
+    /// details | (a) Calculate a 95% PI for the time to the next eruption if the last eruption lasted 3 minutes.
+
+    The said PI is calculated to be [{_low:.2f}, {_high:.2f}].
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex4, linreg, mo, pl, stats):
+    _x = 3
+    _α = 0.05
+    _res = df_ex4.select(
+        linreg(pl.col("LAST"), pl.col("NEXT"), x_star=_x)
+    ).item()
+    _n = df_ex4.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_low, _high] = [
+        _y - _t_star * _res["se_est_ci"],
+        _y + _t_star * _res["se_est_ci"],
+    ]
+
+    mo.md(
+        rf"""
+    /// details | (b) Calculate a 95% CI for the mean time to the next eruption for a last eruption lasting 3 minutes. Compare this CI with the PI obtained in (a).
+
+    The said CI is calculated to be [{_low:.2f}, {_high:.2f}] which is a lot narrower than the PI in (a).
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex4, linreg, mo, pl, stats):
+    _x = 1
+    _α = 0.05
+    _res = df_ex4.select(
+        linreg(pl.col("LAST"), pl.col("NEXT"), x_star=_x)
+    ).item()
+    _n = df_ex4.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_low, _high] = [
+        _y - _t_star * _res["se_est_pi"],
+        _y + _t_star * _res["se_est_pi"],
+    ]
+
+    mo.md(
+        rf"""
+    /// details | (c) Repeat (a) if the last eruption lasted 1 minute. Do you think this prediction is reliable? Why or why not?
+
+    The PI for a 1 minute last eruption is [{_low:.2f}, {_high:.2f}] which is unreliable because we are extrapolating outside of the data domain.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.12
+
+    Refer to Exercise 10.7.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Calculate a 95% PI for the winning time in 2004. Do you think this prediction is reliable? Why or why not?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Use the regression equation to find the year in which the winning time would break 1 minute. Given that the Olympics are every four years, during which Olympics would this happen?
 
     ///
     """
