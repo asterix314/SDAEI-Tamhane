@@ -14,6 +14,7 @@ def _(mo):
 def _():
     import marimo as mo
     import polars as pl
+    import numpy as np
     import altair as alt
     from scipy import stats
 
@@ -26,7 +27,7 @@ def _():
         return f"""```python
     {source}
     ```"""
-    return alt, get_source, mo, pl
+    return alt, get_source, mo, pl, stats
 
 
 @app.cell(hide_code=True)
@@ -170,6 +171,63 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(get_source, mo, pl):
+    def linreg(x: pl.Expr, y: pl.Expr, x_star: float|None = None) -> pl.Expr:
+        """
+        Gives results of simple linear regression and estimation
+        by directly translating textbook formulas to polars expressions.
+
+        Input:
+        - x, y: observations
+        - x_star: input point for estimation
+
+        Output:
+        β0/1: intercept/slope of regression line
+        r2: coefficient of determination
+        s2: mean square error estimate of σ^2
+        f: F statistic of H0: β1 = 0. f=t^2
+        se_β0/1: standard error of β0/1
+        se_est_ci/pi: standard error of the estimation confidence/prediction interval
+        """
+        n = x.len()
+        sxx = ((x - x.mean()) ** 2).sum()
+        syy = ((y - y.mean()) ** 2).sum()
+        sxy = ((x - x.mean()) * (y - y.mean())).sum()
+        β1 = sxy / sxx
+        β0 = y.mean() - x.mean() * β1
+        r2 = sxy**2 / (sxx * syy)
+        s2 = (syy - β1**2 * sxx) / (n - 2)
+        f = β1**2 * sxx / s2
+        se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
+        se_β1 = (s2 / sxx).sqrt()
+        se_est_ci = (s2 * (1 / n + (x_star - x.mean()) ** 2 / sxx)).sqrt()
+        se_est_pi = (s2 * (1 + 1 / n + (x_star - x.mean()) ** 2 / sxx)).sqrt()
+        return pl.struct(
+            β0.alias("β0"),
+            β1.alias("β1"),
+            r2.alias("r2"),
+            s2.alias("s2"),
+            f.alias("f"),
+            se_β0.alias("se_β0"),
+            se_β1.alias("se_β1"),
+            se_est_ci.alias("se_est_ci"),
+            se_est_pi.alias("se_est_pi"),
+        )
+
+
+    mo.callout(
+        mo.md(rf""" 
+    The following `linreg` function of polars expressions follows directly from the formulas in the book, yielding $\beta_0$ and $\beta_1$ among some others defined in later chapters.
+
+    {get_source(linreg)}
+
+    """),
+        kind="info",
+    )
+    return (linreg,)
+
+
+@app.cell(hide_code=True)
 def _(mo, pl):
     df_ex4 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
 
@@ -226,21 +284,7 @@ def _(alt, df_ex4, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex4, get_source, mo, pl):
-    def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
-        n = x.len()
-        sxx = ((x - x.mean()) ** 2).sum()
-        syy = ((y - y.mean()) ** 2).sum()
-        sxy = ((x - x.mean()) * (y - y.mean())).sum()
-        β1 = sxy / sxx
-        β0 = y.mean() - x.mean() * β1
-        r2 = sxy**2 / (sxx * syy)
-        s2 = (syy - β1**2 * sxx) / (n - 2)
-        return pl.struct(
-            β0.alias("β0"), β1.alias("β1"), r2.alias("r2"), s2.alias("s2")
-        )
-
-
+def _(alt, df_ex4, linreg, mo, pl):
     _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
 
     _chart_scatter = df_ex4.plot.scatter(
@@ -253,29 +297,14 @@ def _(alt, df_ex4, get_source, mo, pl):
     ).mark_line(color="red")
 
     mo.md(
-        r"""
+        rf"""
     /// details | (b) Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
 
-    The formulas
-
-    $$
-    \begin{align*}
-    \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}} \\
-    \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x}\\
-    r^2 &= \frac{S_{xy}^2}{S_{xx} S_{yy}} \\
-    s^2 &= \frac{\textrm{SSE}}{n-2} = \frac{S_{yy} - \hat{\beta}_1^2 S_{xx}}{n-2}
-    \end{align*}
-    $$
-
-    translate directly into the polars expressions"""
-        rf"""
-    {get_source(linreg)}
-
-    yielding $\beta_0$ = {_res['β0']:.2f} and $\beta_1$ = {_res['β1']:.2f} when applied to the dataset. If the last eruption lasted 3 minutes, the time to the next eruption would be in 
+    When applied to the dataset, `linreg` gives $\beta_0$ = {_res["β0"]:.2f} and $\beta_1$ = {_res["β1"]:.2f} . If the last eruption lasted 3 minutes, the time to the next eruption would be in 
 
     $$
     \beta_0 + \beta_1 \cdot 3 =
-        {_res['β0']:.2f} + {_res['β1']:.2f} \cdot 3 = {_res['β0'] + _res['β1'] * 3:.2f}
+        {_res["β0"]:.2f} + {_res["β1"]:.2f} \cdot 3 = {_res["β0"] + _res["β1"] * 3:.2f}
     $$
 
     minutes.
@@ -284,7 +313,7 @@ def _(alt, df_ex4, get_source, mo, pl):
 
     ///"""
     )
-    return (linreg,)
+    return
 
 
 @app.cell(hide_code=True)
@@ -657,7 +686,7 @@ def _(mo):
     \hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.
     $$
 
-    However, a $100(1-\alpha)$% _prediction_ interval for $Y^*$ is wider than a $100(1-\alpha)$% confidence interval for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
+    However, a $100(1-\alpha)$% _prediction interval_ for $Y^*$ is wider than a $100(1-\alpha)$% confidence interval for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
     """
         ),
         kind="info",
@@ -678,30 +707,54 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _(df_ex5, linreg, mo, pl, stats):
+    _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
+
+    _t = _res['β1'] / _res['se_β1']
+    _pval = stats.t.sf(_t, df_ex5.height-2)
+
     mo.md(
-        r"""
+        rf"""
     /// details | (a) Is there a significant increasing linear trend in the triple jump distance? Test at $\alpha = .05$.
 
+    This is a test of $H_0: \beta_1 \le 0$ and the $t$-statistic is {_t:.2f} with a one-sided $P$-value of {_pval:.2e} < $\alpha$. So yes there is a significant increasing trend.
+
+
     ///
     """
     )
     return
 
 
-@app.cell
-def _(mo):
+@app.cell(hide_code=True)
+def _(df_ex5, linreg, mo, pl, stats):
+    _x = 2004
+    _α = 0.05
+    _res = df_ex5.select(
+        linreg(pl.col("Year"), pl.col("Distance"), x_star=_x)
+    ).item()
+    _n = df_ex5.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_pi_low, _pi_high] = [
+        _y - _t_star * _res["se_est_pi"],
+        _y + _t_star * _res["se_est_pi"],
+    ]
+
     mo.md(
-        r"""
+        rf"""
     /// details | (b) Calculate a 95% PI for the winning jump in 2004. Do you think this prediction is reliable? Why or why not? Would a 95% CI for the winning jump in 2004 have a meaningful interpretation? Explain.
 
+    A 95% PI for the winning jump in 2004 is [{_pi_low:.2f}, {_pi_high:.2f}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
+
     ///
     """
     )
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
@@ -714,10 +767,27 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _(df_ex6, linreg, mo, pl, stats):
+    _x = 28
+    _α = 0.05
+    _res = df_ex6.select(
+        linreg(pl.col("Pressure"), pl.col("Temp"), x_star=_x)
+    ).item()
+    _n = df_ex6.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_ci_low, _ci_high] = [
+        _y - _t_star * _res["se_est_ci"],
+        _y + _t_star * _res["se_est_ci"],
+    ]
+
+
     mo.md(
-        r"""
+        fr"""
     /// details | (a) Calculate a 95% CI for the boiling point if the barometric pressure is 28 inches of mercury. Interpret your CI.
+
+    The said CI is calculated to be [{_ci_low:.2f}, {_ci_high:.2f}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
 
     ///
     """
@@ -726,10 +796,27 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _(df_ex6, linreg, mo, pl, stats):
+    _x = 31
+    _α = 0.05
+    _res = df_ex6.select(
+        linreg(pl.col("Pressure"), pl.col("Temp"), x_star=_x)
+    ).item()
+    _n = df_ex6.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_ci_low, _ci_high] = [
+        _y - _t_star * _res["se_est_ci"],
+        _y + _t_star * _res["se_est_ci"],
+    ]
+
+
     mo.md(
-        r"""
+        rf"""
     /// details | (b) Calculate a 95% CI for the boiling point if the barometric pressure is 31 inches of mercury. Compare this with the CI of (a).
+
+    The said CI is calculated to be [{_ci_low:.2f}, {_ci_high:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
 
     ///
     """
