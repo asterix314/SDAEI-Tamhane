@@ -933,10 +933,101 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(df_ex7, linreg, mo, pl, stats):
+    _x = 2004
+    _α = 0.05
+    _res = df_ex7.select(
+        linreg(pl.col("Year"), pl.col("Time"), x_star=_x)
+    ).item()
+    _n = df_ex7.height
+
+    _y = _res["β0"] + _res["β1"] * _x
+    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
+    [_low, _high] = [
+        _y - _t_star * _res["se_est_pi"],
+        _y + _t_star * _res["se_est_pi"],
+    ]
+
+    mo.md(
+        rf"""
+    /// details | (a) Calculate a 95% PI for the winning time in 2004. Do you think this prediction is reliable? Why or why not?
+
+    The specified PI is calculated to be [{_low:.2f}, {_high:.2f}]. However, this prediction is unreliable because we are extrapolating outside the data range (latest available year was 1996).
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex7, linreg, mo, pl):
+    _y = 60
+    _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
+
+    _x = (_y - _res["β0"]) / _res["β1"]
+
+
+    mo.md(
+        rf"""
+    /// details | (b) Use the regression equation to find the year in which the winning time would break 1 minute. Given that the Olympics are every four years, during which Olympics would this happen?
+
+    The year {_x:.0f} (by inverse regression).
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_ex13 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-13.json").explode(pl.all())
+
+    mo.md(
+        rf"""
+    ### Ex 10.13
+
+    The U.S. infant mortality rates (IMR) (per 1000 live births) for both sexes and all races for the years 1981-1990 (coded as years 1-10) were as follows:
+
+    {
+            mo.ui.table(
+                df_ex13,
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False,
+            )
+        }
+
+    The MINITAB regression output is shown below.
+
+    ```text
+    MINITAB Output for Regression of Infant Mortality Rate Versus Year
+    MTB regress 'IMR' 1 'Year'
+    The regression equation is
+    IMR = 12.0 - 0.270 Year
+    Predictor     Coef     Stdev   t-ratio       p
+    Constant   12.0333    0.0851    141.35   0.000
+    Year      -0.26970   0.01372    -19.66   0.000
+    s = 0.1246   R-sq = 98.0%   R-sq(adj) = 97.7%
+    Analysis of Variance
+    SOURCE      DF       ss        MS         F         p
+    Regression   1   6.0008    6.0008    386.39     0.000
+    Error        8   0.1242    0.0155
+    Total        9   6.1250
+    ```
+
+    Answer the following questions based on this output.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
-    /// details | (a) Calculate a 95% PI for the winning time in 2004. Do you think this prediction is reliable? Why or why not?
+    /// details | (a) What was the average rate of decrease in the infant mortality rate per year during 1981-1990? Suppose that for the rest of the Western world the rate of decrease in IMR was 0.3 deaths per year per 1000 live births. Was the U.S. rate of decrease significantly less than that for the rest of the Western world? Use $\alpha$ = .05.
 
     ///
     """
@@ -948,7 +1039,7 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    /// details | (b) Use the regression equation to find the year in which the winning time would break 1 minute. Given that the Olympics are every four years, during which Olympics would this happen?
+    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{xx}$ can be obtained from the values of Stdev($\hat{\beta}_1$) and $s$ given in the MINITAB output.)
 
     ///
     """
