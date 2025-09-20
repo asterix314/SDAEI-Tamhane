@@ -27,7 +27,7 @@ def _():
         return f"""```python
     {source}
     ```"""
-    return alt, get_source, mo, pl, stats
+    return alt, get_source, mo, np, pl, stats
 
 
 @app.cell(hide_code=True)
@@ -1020,15 +1020,56 @@ def _(mo, pl):
     Answer the following questions based on this output.
     """
     )
-    return
+    return (df_ex13,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(df_ex13, mo, stats):
+    _β1 = 0.2697
+    _β10 = 0.3
+    _se = 0.01372
+    _n = df_ex13.height
+    _t = (_β1 - _β10) / _se
+    _pval = stats.t.cdf(_t, _n-2)
+
     mo.md(
-        r"""
+        rf"""
     /// details | (a) What was the average rate of decrease in the infant mortality rate per year during 1981-1990? Suppose that for the rest of the Western world the rate of decrease in IMR was 0.3 deaths per year per 1000 live births. Was the U.S. rate of decrease significantly less than that for the rest of the Western world? Use $\alpha$ = .05.
 
+    Reading off the MINITAB output, the rate of IMR decrease is {_β1} deaths per 1,000 live births per year. 
+
+    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\textrm{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.3f} with $P$-value {_pval:.3f} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np, stats):
+    _α = 0.05
+    _n = 10
+    _β0 = 12.0333
+    _β1 = -0.26970
+    _s = 0.1246
+    _ssr = 6.0008
+    _sxx = _ssr / _β1**2
+    _x = 1995 - 1980
+    _x_mean = (1 + 10) / 2
+    _y = _β0 + _β1 * _x
+    _t_crit = stats.t.ppf(1 - _α / 2, _n - 2)
+    _se_est_pi = _s * np.sqrt(1 + 1 / _n + (_x - _x_mean) ** 2 / _sxx)
+    _err = _t_crit * _se_est_pi
+
+
+    mo.md(
+        r"""
+    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{xx}$ can be obtained from the values of $\textrm{Stdev}(\hat{\beta}_1)$ and $s$ given in the MINITAB output.)
+
+    $S_{xx}$ can be obtained as in the note, or simply $S_{xx} = \textrm{SSR}/\hat{\beta}_1^2$, and both $\textrm{SSR}$ and $\hat{\beta}_1$ are in the MINITAB output. Anyways, the calculated IMR for the year 1995 is """
+        f""" {_y:.2f} ± {_err:.2f} = [{_y - _err:.2f}, {_y + _err:.2f}].
+
     ///
     """
     )
@@ -1039,11 +1080,25 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{xx}$ can be obtained from the values of Stdev($\hat{\beta}_1$) and $s$ given in the MINITAB output.)
+    ### Ex 10.14
 
-    ///
+    For the linear regression model show that the sample mean $\bar{Y}$ and the LS slope estimator $\hat{\beta}_1$ are statistically independent.
+
+    _Hint_: Write $\bar{Y} = \frac{1}{n} \sum Y_i$ and $\hat{\beta}_1 = \sum c_i Y_i$, where $c_i = (x_i - \bar{x}) / S_{xx}$ and satisfy $\sum c_i = 0$. Then show that $\textrm{Cov}(\bar{Y}, \hat{\beta}_1) = 0$ by using the formula 
+
+    $$
+    \textrm{Cov}\left(\sum_{i=1}^m a_i X_i, \sum_{j=1}^n b_j Y_j \right) = \sum_{i=1}^m \sum_{j=1}^n a_i b_j\,\textrm{Cov}(X_i,Y_j)
+    $$
+
+    for the covariance between two sets of linear combinations of r.v.'s. Finally, use the result that if two normal r.v.'s are uncorrelated, then they are independent.
     """
     )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r""" """)
     return
 
 
@@ -1060,6 +1115,129 @@ def _(mo):
             r"""Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways."""
         ),
         kind="info",
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.15
+
+    Often, the probability of response $p\ (0 \le p \le 1)$ is modeled as a function of a stimulus $x$ by the _logistic function_:
+
+    $$
+    p = 1 + \frac{\exp{(\beta_0 + \beta_1 x)}}{1+\exp{(\beta_o + \beta_1 x)}}.
+    $$
+
+    For example, the stimulus is the dose level of a drug and the response is cured or is notcured. Find the linearizing transformation $h(p)$ so that $h(p) = \beta_0 + \beta_1 x$.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_ex16 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-16.json").explode(pl.all())
+
+    mo.md(
+        rf"""
+    ### Ex 10.16
+
+    A prime is a positive integer that has no integer factors other than 1 and itself (1 is not regarded as a prime). The number of primes in any given interval of whole numbers is highly irregular. However, the proportion of primes less than or equal to any given number $x$ (denoted by $p(x)$) follows a regular pattern as $x$ increases. The following table gives the number and proportion of primes for $x = 10^n$ for $n = 1, 2, \ldots, 10$. The objective of the present exercise is to discover this pattern.
+
+    {
+            mo.ui.table(
+                df_ex16,
+                selection=None,
+                show_data_types=False,
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Plot the proportion of primes, $p(x)$, against $10,000/x$, $1000/\sqrt{x}$, and $1 / \log_{10}x$. Which relationship appears most linear?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Estimate the slope of the line $p(x) = \beta_0 + \beta_1 \cdot 1/\log_{10}x$ and show that $\hat{\beta}_1 \approx \log_{10}e = 0.4343$.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (c) Explain how the relationship found in (b) roughly translates into the _prime number theorem_: For large $x$, $p(x) \approx 1 / \log_e x$.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_ex17 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-17.json").explode(pl.all())
+
+    mo.md(
+        rf"""
+    ### Ex 10.17
+
+    In a memory retention experiment subjects were asked to memorize a list of disconnected items, and then were asked to recall them at various times up to a week later. The proportion $p$ of items recalled at times $t$ (in minutes) is given below.
+
+    {
+            mo.ui.table(
+                df_ex17,
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False,
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Note that $t$ increases almost geometrically throughout. This suggests that a logarithmic transformation of $t$ might linearize the relationship. Plot $p$ vs. $\ln{t}$. Is the relationship approximately linear?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Fit a trend line to the plot in (a). From the trend line estimate the time for 50% retention.
+
+    ///
+    """
     )
     return
 
