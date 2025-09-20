@@ -1098,7 +1098,33 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r""" """)
+    mo.md(
+        r"""
+    By the formula for $\hat{\beta}_1$:
+
+    $$
+    \begin{align*}
+    \hat{\beta}_1 &= S_{xy}/S_{xx} \\
+    &= \frac{1}{S_{xx}} \sum(x_i - \bar{x})(x_i - \bar{y}) \\
+    &= \frac{1}{S_{xx}} \left[\sum(x_i - \bar{x})\,y_i -\bar{y}\sum (x_i - \bar{x})\right] \\
+    &= \frac{1}{S_{xx}} \sum(x_i - \bar{x})\,y_i.
+    \end{align*}
+    $$
+
+    Let $c_i = (x_i - \bar{x}) / S_{xx}$, we have $\hat{\beta}_1 = \sum c_i Y_i$ and $\sum c_i = 0$. Now,
+
+    $$
+    \begin{align*}
+    \textrm{Cov}(\bar{Y}, \hat{\beta}_1) &= \textrm{Cov}\left(\frac{1}{n}\sum_i Y_i, \sum_j c_j Y_j\right) \\
+    &= \sum_i \sum_j \frac{c_j}{n}\,\textrm{Cov}(Y_i, Y_j) \\
+    &= \frac{1}{n} \sum_i c_i \quad \quad \triangleright\ \textrm{Cov}(Y_i, Y_j) = 1_{i=j}\\
+    &= 0.
+    \end{align*}
+    $$
+
+    On the other hand, $\bar{Y}$ and $\hat{\beta}_1$ are both normal, and for jointly normal random variables, being uncorrelated implies independence. 
+    """
+    )
     return
 
 
