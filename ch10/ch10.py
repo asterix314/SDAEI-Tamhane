@@ -706,7 +706,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(df_ex5, linreg, mo, pl, stats):
     _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
 
@@ -766,7 +766,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(df_ex6, linreg, mo, pl, stats):
     _x = 28
     _α = 0.05
@@ -795,7 +795,7 @@ def _(df_ex6, linreg, mo, pl, stats):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(df_ex6, linreg, mo, pl, stats):
     _x = 31
     _α = 0.05
@@ -1122,7 +1122,7 @@ def _(mo):
     \end{align*}
     $$
 
-    On the other hand, $\bar{Y}$ and $\hat{\beta}_1$ are both normal, and for jointly normal random variables, being uncorrelated implies independence. 
+    On the other hand, $\bar{Y}$ and $\hat{\beta}_1$ are both normal, and for jointly normal random variables, being uncorrelated implies independence.
     """
     )
     return
@@ -1134,7 +1134,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.callout(
         mo.md(
@@ -1142,6 +1142,11 @@ def _(mo):
         ),
         kind="info",
     )
+    return
+
+
+@app.cell
+def _():
     return
 
 
@@ -1154,10 +1159,24 @@ def _(mo):
     Often, the probability of response $p\ (0 \le p \le 1)$ is modeled as a function of a stimulus $x$ by the _logistic function_:
 
     $$
-    p = 1 + \frac{\exp{(\beta_0 + \beta_1 x)}}{1+\exp{(\beta_o + \beta_1 x)}}.
+    p = \frac{\exp{(\beta_0 + \beta_1 x)}}{1+\exp{(\beta_o + \beta_1 x)}}.
     $$
 
     For example, the stimulus is the dose level of a drug and the response is cured or is notcured. Find the linearizing transformation $h(p)$ so that $h(p) = \beta_0 + \beta_1 x$.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    Taking the inverse on both sides will lead to the linearizing transformation
+
+    $$
+    h(p) = \ln{\frac{p}{1-p}} = \beta_0 + \beta_1 x.
+    $$
     """
     )
     return
@@ -1182,15 +1201,35 @@ def _(mo, pl):
         }
     """
     )
-    return
+    return (df_ex16,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(alt, df_ex16, mo, pl):
+    _df = df_ex16.with_columns(
+        x=10.0 ** pl.col("x").str.extract("\\^(\\d+)").cast(int)
+    ).with_columns(
+        h1=10000 / pl.col("x"),
+        h2=1000 / pl.col("x").sqrt(),
+        h3=1 / pl.col("x").log10(),
+    )
+
+    _chart = (
+        alt.Chart(_df)
+        .mark_line(point=True)
+        .encode(alt.X(alt.repeat("column"), type="quantitative"), alt.Y("Prop"))
+        .properties(width=200)
+        .repeat(column=["h1", "h2", "h3"])
+    )
+
     mo.md(
         r"""
     /// details | (a) Plot the proportion of primes, $p(x)$, against $10,000/x$, $1000/\sqrt{x}$, and $1 / \log_{10}x$. Which relationship appears most linear?
 
+    In the charts below, h1 = $10,000/x$, h2 = $1000/\sqrt{x}$, and h3 = $1 / \log_{10}x$. Apparently the relationship between $1 / \log_{10}x$ and $p(x)$ appears most linear.
+    """
+        f"""
+    {mo.as_html(_chart)}
     ///
     """
     )
@@ -1198,10 +1237,24 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(df_ex16, linreg, mo, pl):
+    _res = (
+        df_ex16.with_columns(
+            x=10.0 ** pl.col("x").str.extract("\\^(\\d+)").cast(int)
+        )
+        .with_columns(
+            h3=1 / pl.col("x").log10(),
+        )
+        .select(linreg(pl.col("h3"), pl.col("Prop")))
+        .item()
+    )
+
     mo.md(
-        r"""
-    /// details | (b) Estimate the slope of the line $p(x) = \beta_0 + \beta_1 \cdot 1/\log_{10}x$ and show that $\hat{\beta}_1 \approx \log_{10}e = 0.4343$.
+        rf"""
+    /// details | (b) Estimate the slope of the line $p(x) = \beta_0 + \beta_1 \cdot 1/\log_{{10}}x$ and show that $\hat{{\beta}}_1 \approx \log_{{10}}e = 0.4343$.
+
+    Using `linreg` and $\alpha$ = 0.05, $\hat{{\beta}}_0 = {_res["β0"]:.4f}$ and $\hat{{\beta}}_1 = {_res["β1"]:.4f} \approx \log_{{10}}e = 0.4343$.
+
 
     ///
     """
@@ -1215,6 +1268,7 @@ def _(mo):
         r"""
     /// details | (c) Explain how the relationship found in (b) roughly translates into the _prime number theorem_: For large $x$, $p(x) \approx 1 / \log_e x$.
 
+    TODO
     ///
     """
     )
@@ -1261,6 +1315,67 @@ def _(mo):
     mo.md(
         r"""
     /// details | (b) Fit a trend line to the plot in (a). From the trend line estimate the time for 50% retention.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, pl):
+    df_ex18 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-18.json").explode(pl.all())
+
+    mo.md(
+        rf"""
+    ### Ex 10.18
+
+    The following are the average distances of the planets in the solar system from the sun:
+
+    {
+            mo.ui.table(
+                df_ex18,
+                label="(distances are in millions of miles.)",
+                show_column_summaries=False,
+                selection=None,
+                show_data_types=False,
+            )
+        }
+
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) How does the distance of a planet from the sun increase with the planet number? Find a transformation of the distance that gives a linear relationship with respect to the planet number.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Fit a least squares straight line after linearizing the relationship.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (c) It is speculated that there is a planet beyond Pluto, called Planet X. Predict its distance from the sun.
 
     ///
     """
