@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.15.5"
+__generated_with = "0.16.1"
 app = marimo.App(width="medium")
 
 
@@ -73,13 +73,23 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.accordion(
-        {
-            "1. Maxwell's equations of electromagnetism.": "theoretical and deterministic",
-            "2. An econometric model of the U.S. economy.": "empirical and probabilistic",
-            "3. A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc.": "empirical and probabilistic",
-        },
-        multiple=True,
+    mo.md(
+        r"""
+    /// details | 1. Maxwell's equations of electromagnetism
+
+    theoretical and deterministic
+    ///
+
+    /// details | 2. An econometric model of the U.S. economy.
+
+    empirical and probabilistic
+    ///
+
+    /// details | 3. A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc.
+
+    empirical and probabilistic
+    ///
+    """
     )
     return
 
@@ -98,13 +108,23 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.accordion(
-        {
-            '''1. An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.''': "empirical and probabilistic",
-            "2. The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs.": "empirical and probabilistic",
-            "3. Kepler's laws of planetary motion.": "theoretical and deterministic",
-        },
-        multiple=True,
+    mo.md(
+        r"""
+    /// details | 1. An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.
+
+    empirical and probabilistic
+    ///
+
+    /// details | 2. The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs.
+
+    empirical and probabilistic
+    ///
+
+    /// details | 3. Kepler's laws of planetary motion.
+
+    theoretical and deterministic
+    ///
+    """
     )
     return
 
@@ -203,6 +223,7 @@ def _(get_source, mo, pl):
         se_est_ci = (s2 * (1 / n + (x_star - x.mean()) ** 2 / sxx)).sqrt()
         se_est_pi = (s2 * (1 + 1 / n + (x_star - x.mean()) ** 2 / sxx)).sqrt()
         return pl.struct(
+            n.alias("n"),
             β0.alias("β0"),
             β1.alias("β1"),
             r2.alias("r2"),
@@ -216,11 +237,12 @@ def _(get_source, mo, pl):
 
 
     mo.callout(
-        mo.md(rf""" 
-    The following `linreg` function of polars expressions follows directly from the formulas in the book, yielding $\beta_0$ and $\beta_1$ among some others defined in later chapters.
+        mo.md(rf"""
+    The `scipy` function [`stats.linregress`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.linregress.html) can be used to get many results of a simple linear regression.
+
+    The `linreg` function of polars expressions defined below follows directly from the formulas in the book, yielding $\beta_0$ and $\beta_1$ among others. We'll use this homemade function for the exercises.
 
     {get_source(linreg)}
-
     """),
         kind="info",
     )
@@ -228,123 +250,69 @@ def _(get_source, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex4 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
+def _(alt, linreg, mo, pl):
+    _df = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
 
+    _res = _df.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
+    _β0, _β1, _r2, _s2 = _res["β0"], _res["β1"], _res["r2"], _res["s2"]
 
-    def _rename_df(df: pl.DataFrame) -> pl.DataFrame:
-        return df.rename(
-            {
-                "No": "Obs.\nNo.",
-                "LAST": "Duration of Eruption\n(LAST)",
-                "NEXT": "Time Between Eruptions\n(NEXT)",
-            }
-        )
+    _scatter = _df.plot.scatter(
+        alt.X("LAST").scale(domain=[1, 5.5]),
+        alt.Y("NEXT").scale(domain=[30, 100]),
+    )
+
+    _line = _scatter.transform_regression("LAST", "NEXT").mark_line(color="red")
 
 
     mo.md(
-        f"""
+        rf"""
     ### Ex 10.4
 
     The time between eruptions of Old Faithful geyser in Yellowstone National Park is random but is related to the duration of the last eruption. The table below shows these times for 21 consecutive eruptions.
 
-    {
-            mo.ui.table(
-                _rename_df(df_ex4),
-                label="Old Faithful Eruptions: Duration and Time Between Eruptions",
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False,
-            )
-        }
+    {mo.ui.table(
+        _df.rename({
+            "No": "Obs.\nNo.",
+            "LAST": "Duration of Eruption\n(LAST)",
+            "NEXT": "Time Between Eruptions\n(NEXT)"}),
+        label="Old Faithful Eruptions: Duration and Time Between Eruptions",
+        show_column_summaries=False,
+        selection=None,
+        show_data_types=False)}
 
-    Let us see how well we can predict the time to next eruption, given the length of time of the last eruption."""
-    )
-    return (df_ex4,)
+    Let us see how well we can predict the time to next eruption, given the length of time of the last eruption.
 
-
-@app.cell(hide_code=True)
-def _(alt, df_ex4, mo):
-    _chart = df_ex4.plot.scatter(
-        alt.X("LAST").scale(domain=[1, 5.5]),
-        alt.Y("NEXT").scale(domain=[30, 100]),
-    )
-
-    mo.md(
-        f"""
     /// details | (a) Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_chart)}
+    {mo.ui.altair_chart(_scatter)}
 
     Yes, the points appear approximately linear.
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(alt, df_ex4, linreg, mo, pl):
-    _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
-
-    _chart_scatter = df_ex4.plot.scatter(
-        alt.X("LAST").scale(domain=[1, 5.5]),
-        alt.Y("NEXT").scale(domain=[30, 100]),
-    )
-
-    _chart_regression = _chart_scatter.transform_regression(
-        "LAST", "NEXT"
-    ).mark_line(color="red")
-
-    mo.md(
-        rf"""
     /// details | (b) Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
 
-    When applied to the dataset, `linreg` gives $\beta_0$ = {_res["β0"]:.2f} and $\beta_1$ = {_res["β1"]:.2f} . If the last eruption lasted 3 minutes, the time to the next eruption would be in 
+    When applied to the dataset, `linreg` gives $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about
 
     $$
-    \beta_0 + \beta_1 \cdot 3 =
-        {_res["β0"]:.2f} + {_res["β1"]:.2f} \cdot 3 = {_res["β0"] + _res["β1"] * 3:.2f}
+    \beta_0 + \beta_1 \cdot 3 = {_β0:.2f} + {_β1:.2f} \cdot 3 = {_β0 + _β1 * 3:.2f}
     $$
 
     minutes.
 
-    {mo.as_html(_chart_scatter + _chart_regression)}
+    {mo.as_html(_scatter + _line)}
+    ///
 
-    ///"""
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(df_ex4, linreg, mo, pl):
-    _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
-
-    mo.md(
-        rf"""
     /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
 
-    Also using the `linreg` function, $r^2$ = {_res['r2']:.2f}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
-
+    Also using the `linreg` function, $r^2$ = {_r2:.2f}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(df_ex4, linreg, mo, pl):
-    _res = df_ex4.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
-
-
-    mo.md(
-        rf"""
     /// details | (d) Calculate the mean square error estimate of $\sigma$.
 
-    Also using the `linreg` function, $s^2$ = {_res['s2']:.2f}, and the mean square error estimate of $\sigma$ is $s$ = {_res['s2'] ** 0.5:.2f}.
-
+    Also using the `linreg` function, $s^2$ = {_s2:.2f}, and the mean square error estimate of $\sigma$ is $s$ = {_s2**0.5:.2f}.
     ///
-    """
+
+                """
     )
     return
 
@@ -837,85 +805,65 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex4, linreg, mo, pl, stats):
-    _x = 3
-    _α = 0.05
-    _res = df_ex4.select(
-        linreg(pl.col("LAST"), pl.col("NEXT"), x_star=_x)
-    ).item()
-    _n = df_ex4.height
-
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_low, _high] = [
-        _y - _t_star * _res["se_est_pi"],
-        _y + _t_star * _res["se_est_pi"],
-    ]
+def _(linreg, mo, pl, stats):
+    _df = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
 
 
-    mo.md(
-        rf"""
+    def _estimate_interval(
+        df: pl.DataFrame,
+        x: str,
+        y: str,
+        x_star: float,
+        α: float = 0.05,
+        kind: str = "CI",
+    ) -> list[float]:
+        res = df.select(linreg(pl.col(x), pl.col(y), x_star=x_star)).item()
+        y_star = res["β0"] + res["β1"] * x_star
+        t_crit = stats.t.ppf(1 - α / 2, res["n"]).item()  # critical value
+        se = res["se_est_ci"] if kind == "CI" else res["se_est_pi"]
+        return [y_star - t_crit * se, y_star + t_crit * se]
+
+
+    [_low, _high] = _estimate_interval(
+        _df, x="LAST", y="NEXT", x_star=3, kind="PI"
+    )
+
+    mo.output.append(
+        mo.md(
+            rf"""
     /// details | (a) Calculate a 95% PI for the time to the next eruption if the last eruption lasted 3 minutes.
 
     The said PI is calculated to be [{_low:.2f}, {_high:.2f}].
-    ///
-    """
+    ///"""
+        )
     )
-    return
 
+    [_low, _high] = _estimate_interval(
+        _df, x="LAST", y="NEXT", x_star=3, kind="CI"
+    )
 
-@app.cell(hide_code=True)
-def _(df_ex4, linreg, mo, pl, stats):
-    _x = 3
-    _α = 0.05
-    _res = df_ex4.select(
-        linreg(pl.col("LAST"), pl.col("NEXT"), x_star=_x)
-    ).item()
-    _n = df_ex4.height
-
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_low, _high] = [
-        _y - _t_star * _res["se_est_ci"],
-        _y + _t_star * _res["se_est_ci"],
-    ]
-
-    mo.md(
-        rf"""
+    mo.output.append(
+        mo.md(
+            rf"""
     /// details | (b) Calculate a 95% CI for the mean time to the next eruption for a last eruption lasting 3 minutes. Compare this CI with the PI obtained in (a).
 
     The said CI is calculated to be [{_low:.2f}, {_high:.2f}] which is a lot narrower than the PI in (a).
-
-    ///
-    """
+    ///"""
+        )
     )
-    return
 
+    [_low, _high] = _estimate_interval(
+        _df, x="LAST", y="NEXT", x_star=1, kind="PI"
+    )
 
-@app.cell(hide_code=True)
-def _(df_ex4, linreg, mo, pl, stats):
-    _x = 1
-    _α = 0.05
-    _res = df_ex4.select(
-        linreg(pl.col("LAST"), pl.col("NEXT"), x_star=_x)
-    ).item()
-    _n = df_ex4.height
-
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_low, _high] = [
-        _y - _t_star * _res["se_est_pi"],
-        _y + _t_star * _res["se_est_pi"],
-    ]
-
-    mo.md(
-        rf"""
+    mo.output.append(
+        mo.md(
+            rf"""
     /// details | (c) Repeat (a) if the last eruption lasted 1 minute. Do you think this prediction is reliable? Why or why not?
 
     The PI for a 1 minute last eruption is [{_low:.2f}, {_high:.2f}] which is unreliable because we are extrapolating outside of the data domain.
-
-    ///
     """
+        )
     )
     return
 
@@ -1389,7 +1337,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
@@ -1407,6 +1355,111 @@ def _(mo):
 
     The sample estimate $\hat{\psi}$ of $\psi$, obtained by substituting $\hat{\rho} = r$ in the above expression, is approximately normally distributed with mean=$\frac{1}{2}\log_e (\frac{1+\rho}{1-\rho})$ and variance=$\frac{1}{n-3}$.
     """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(alt, ci, mo, pl, stats):
+    _df = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-28.json").explode(pl.all())
+
+    mo.output.append(
+        mo.md(
+            rf"""
+    ### Ex 10.28
+
+    The following are the heights and weights of 30 eleven year old girls.
+
+    {
+                mo.ui.table(
+                    _df,
+                    label="(Heights are in cms and weights are in kgs)",
+                    show_column_summaries=False,
+                    selection=None,
+                    show_data_types=False,
+                )
+            }
+
+    """
+        )
+    )
+
+    _chart = _df.plot.scatter(
+        alt.X("Height").scale(domain=[130, 165]),
+        alt.Y("Weight").scale(domain=[20, 60]),
+    )
+
+    mo.output.append(
+        mo.md(
+            rf"""
+    /// details | (a) Plot weights vs. heights.
+
+    {mo.as_html(_chart)}
+
+    ///
+    """
+        )
+    )
+
+
+    def corr_test(
+        x: pl.Expr, y: pl.Expr, alternative: str = "two-sided"
+    ) -> pl.Expr:
+        n = x.len()
+        r = pl.corr(x, y)
+        t = r * (n - 2).sqrt() / (1 - r**2).sqrt()
+        s = pl.struct(n.alias("n"), t.alias("t"))
+
+        match alternative:
+            case "two-sided":
+                res = s.map_batches(
+                    lambda s: 2
+                    * stats.t.sf(
+                        s.struct.field("t").abs(), s.struct.field("n") - 2
+                    ).item()
+                )
+            case "less":
+                res = s.map_batches(
+                    lambda s: stats.t.cdf(
+                        s.struct.field("t"), s.struct.field("n") - 2
+                    ).item()
+                )
+            case "greater":
+                res = s.map_batches(
+                    lambda s: stats.t.sf(
+                        s.struct.field("t"), s.struct.field("n") - 2
+                    ).item()
+                )
+        return res.alias("pval")
+
+
+    def corr_ci(
+        x: pl.Expr, y: pl.Expr, alternative: str = "two-sided", α: float = 0.05
+    ) -> pl.Expr:
+        r = pl.corr(x, y)
+        n = x.len()
+        match ci:
+            case "two-sided":
+                pass
+            case "greater":
+                pass
+            case "less":
+                pass
+
+
+    _r = _df.select(pl.corr("Height", "Weight")).item()
+
+    mo.output.append(
+        mo.md(
+            rf"""
+    /// details | (b) Calculate the correlation coefficient. Test if it is significantly greater than 0.7.
+
+    {_r}
+
+    ///
+
+    """
+        )
     )
     return
 
