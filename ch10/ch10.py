@@ -17,6 +17,7 @@ def _():
     import numpy as np
     import altair as alt
     from scipy import stats
+    from great_tables import GT, md, html
 
     import inspect
 
@@ -27,7 +28,14 @@ def _():
         return f"""```python
     {source}
     ```"""
-    return alt, get_source, mo, np, pl, stats
+
+
+    def df_ex(n: int) -> pl.DataFrame:
+        """return dataframe of exercise number n"""
+        fname = f"../SDAEI-Tamhane/ch10/Ex10-{n}.json"
+        print(f'loading exercise data from "{fname}"')
+        return pl.read_json(fname).explode(pl.all())
+    return alt, df_ex, get_source, html, md, mo, np, pl, stats
 
 
 @app.cell(hide_code=True)
@@ -38,9 +46,10 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.callout(
-        mo.md(
-            r"""
+    mo.ui.tabs(
+        {
+            "Theory": mo.md(
+                r"""
     _Linear regression analysis_ begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The linear regression model
 
     $$
@@ -53,8 +62,8 @@ def _(mo):
     2. The mean of $Y_i$ is a linear function of $x_i$.
     3. The errors $\epsilon_i$ are i.i.d. normal.
     """
-        ),
-        kind="info",
+            )
+        }
     )
     return
 
@@ -159,40 +168,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.callout(
-        mo.md(
-            r"""
-    The _least squares(LS) estimates_ $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
-
-    $$
-    \begin{align*}
-    \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x},\\
-    \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}}
-    \end{align*}
-    $$
-
-    where $S_{xy} = \sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})$ and $S_{xx} = \sum_{i=1}^n (x_i - \bar{x})^2$. The *fitted values* are given by $\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i$ and the *residuals* by $e_i = y_i - \hat{y}_i$.
-
-    The total sum of squares (SST), regression sum of squares (SSR) and error sum of squares (SSE) are defined as $\mathrm{SST} = \sum_{i=1}^n (y_i - \bar{y})^2$, $\mathrm{SSR} = \sum_{i=1}^n (\hat{y}_i - \bar{y})^2$, and $\mathrm{SSE} = \sum_{i=1}^n (y_i - \hat{y}_i)^2$. These sums of squares satisfy the identity $\mathrm{SST} = \mathrm{SSR} + \mathrm{SSE}$. A measure of goodness of fit of the least squares line is the *coefficient of determination*,
-
-    $$
-    r^2 = \frac{\mathrm{SSR}}{\mathrm{SST}} = 1 - \frac{\mathrm{SSE}}{\mathrm{SST}}
-    $$
-
-    which represents the proportion of variation in $y$ that is accounted for by regression on $x$. The *correlation coefficient* $r$ equals $\pm\sqrt{r^2}$, where $\mathrm{sign}(r) = \mathrm{sign}(\hat{\beta}_1)$. In fact, $r = \hat{\beta}_1 (s_x / s_y)$, where $s_x$ and $s_y$ are the sample standard deviations of $x$ and $y$, respectively.
-
-    The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f.
-    """
-        ),
-        kind="info",
-    )
-    return
-
-
-@app.cell(hide_code=True)
 def _(get_source, mo, pl):
-    def linreg(x: pl.Expr, y: pl.Expr, x_star: float|None = None) -> pl.Expr:
+    def linreg(x: pl.Expr, y: pl.Expr, x_star: float | None = None) -> pl.Expr:
         """
         Gives results of simple linear regression and estimation
         by directly translating textbook formulas to polars expressions.
@@ -236,23 +213,86 @@ def _(get_source, mo, pl):
         )
 
 
-    mo.callout(
-        mo.md(rf"""
+    mo.ui.tabs(
+        {
+            "Theory": mo.md(
+                r"""
+    The _least squares(LS) estimates_ $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
+
+    $$
+    \begin{align*}
+    \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}}, \\
+    \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x}
+    \end{align*}
+    $$
+
+    where $S_{xy} = \sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})$ and $S_{xx} = \sum_{i=1}^n (x_i - \bar{x})^2$. The *fitted values* are given by $\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i$ and the *residuals* by $e_i = y_i - \hat{y}_i$.
+
+    The total sum of squares (SST), regression sum of squares (SSR) and error sum of squares (SSE) are defined as $\mathrm{SST} = \sum_{i=1}^n (y_i - \bar{y})^2$, $\mathrm{SSR} = \sum_{i=1}^n (\hat{y}_i - \bar{y})^2$, and $\mathrm{SSE} = \sum_{i=1}^n (y_i - \hat{y}_i)^2$. These sums of squares satisfy the identity $\mathrm{SST} = \mathrm{SSR} + \mathrm{SSE}$. A measure of goodness of fit of the least squares line is the *coefficient of determination*,
+
+    $$
+    r^2 = \frac{\mathrm{SSR}}{\mathrm{SST}} = 1 - \frac{\mathrm{SSE}}{\mathrm{SST}}
+    $$
+
+    which represents the proportion of variation in $y$ that is accounted for by regression on $x$. The *correlation coefficient* $r$ equals $\pm\sqrt{r^2}$, where $\mathrm{sign}(r) = \mathrm{sign}(\hat{\beta}_1)$. In fact, $r = \hat{\beta}_1 (s_x / s_y)$, where $s_x$ and $s_y$ are the sample standard deviations of $x$ and $y$, respectively.
+
+    The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f.
+    """
+            ),
+            "Implementation": mo.md(rf"""
     The `scipy` function [`stats.linregress`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.linregress.html) can be used to get many results of a simple linear regression.
 
     The `linreg` function of polars expressions defined below follows directly from the formulas in the book, yielding $\beta_0$ and $\beta_1$ among others. We'll use this homemade function for the exercises.
 
     {get_source(linreg)}
     """),
-        kind="info",
+        }
     )
     return (linreg,)
 
 
 @app.cell(hide_code=True)
-def _(alt, linreg, mo, pl):
-    _df = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
+def _(df_ex, html, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.4
 
+    The time between eruptions of Old Faithful geyser in Yellowstone National Park is random but is related to the duration of the last eruption. The table below shows these times for 21 consecutive eruptions.
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(4)
+                    .style.tab_options(table_font_size=13, container_width="60%")
+                    .tab_header(
+                        title="Old Faithful Eruptions: Duration and Time Between Eruptions (in min.)"
+                    )
+                    .tab_stub(rowname_col="No")
+                    .tab_stubhead(label="Obs. No.")
+                    .cols_label(
+                        LAST=html("Duration of Eruption<br>(LAST)"),
+                        NEXT=html("Time Between Eruptions<br>(NEXT)"),
+                    )
+                    .fmt_number(columns=["No", "NEXT"], drop_trailing_zeros=True)
+                    .cols_align(align="center", columns=["LAST", "NEXT"])
+                    .tab_source_note(
+                        source_note=md(
+                            'Source: L. Denby and D. Pregibon ( 1987), "An example of the use of graphics in regression". _The American Statistician_, 41, pp. 33-38.'
+                        )
+                    )
+                )
+            )
+        }
+
+    Let us see how well we can predict the time to next eruption, given the length of time of the last eruption.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(alt, df_ex, linreg, mo, pl):
+    _df = df_ex(4)
     _res = _df.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
     _β0, _β1, _r2, _s2 = _res["β0"], _res["β1"], _res["r2"], _res["s2"]
 
@@ -266,22 +306,6 @@ def _(alt, linreg, mo, pl):
 
     mo.md(
         rf"""
-    ### Ex 10.4
-
-    The time between eruptions of Old Faithful geyser in Yellowstone National Park is random but is related to the duration of the last eruption. The table below shows these times for 21 consecutive eruptions.
-
-    {mo.ui.table(
-        _df.rename({
-            "No": "Obs.\nNo.",
-            "LAST": "Duration of Eruption\n(LAST)",
-            "NEXT": "Time Between Eruptions\n(NEXT)"}),
-        label="Old Faithful Eruptions: Duration and Time Between Eruptions",
-        show_column_summaries=False,
-        selection=None,
-        show_data_types=False)}
-
-    Let us see how well we can predict the time to next eruption, given the length of time of the last eruption.
-
     /// details | (a) Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
 
     {mo.ui.altair_chart(_scatter)}
@@ -304,12 +328,12 @@ def _(alt, linreg, mo, pl):
 
     /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
 
-    Also using the `linreg` function, $r^2$ = {_r2:.2f}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
+    $r^2$ = {_r2:.2f}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
     ///
 
     /// details | (d) Calculate the mean square error estimate of $\sigma$.
 
-    Also using the `linreg` function, $s^2$ = {_s2:.2f}, and the mean square error estimate of $\sigma$ is $s$ = {_s2**0.5:.2f}.
+    $s^2$ = {_s2:.2f}, and the mean square error estimate of $\sigma$ is $s$ = {_s2**0.5:.2f}.
     ///
 
                 """
@@ -318,9 +342,7 @@ def _(alt, linreg, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex5 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-5.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         f"""
     ### Ex 10.5
@@ -328,76 +350,60 @@ def _(mo, pl):
     The data below show Olympic triple jump winning distances for men in meters for the years 1896 to 1992 (there were no Olympic games in 1916, 1940, and 1944).
 
     {
-            mo.ui.table(
-                df_ex5,
-                label="Men's Olympic Triple Jump Winning Distance (in meters)",
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False
+            mo.center(
+                mo.as_html(
+                    df_ex(5)
+                    .style.tab_options(table_font_size=13, container_width="60%")
+                    .tab_header(
+                        title="Men's Olympic Triple Jump Winning Distance (in meters)"
+                    )
+                    .fmt_integer(columns="Year", use_seps=False)
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: _World Almanac and Book of Facts_ (1995), Mahwah. NJ: Funk & Wagnalls Corporation, p. 860."
+                        )
+                    )
+                )
             )
         }
     """
     )
-    return (df_ex5,)
+    return
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex5, mo, pl):
-    _chart = df_ex5.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
-        alt.X("Year:T"), # .scale(domain=[(1890,1,1), (2000,1,1)]),
+def _(alt, df_ex, linreg, mo, pl):
+    _df = df_ex(5)
+    _res = _df.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
+    _β0, _β1, _r2, _s2 = _res["β0"], _res["β1"], _res["r2"], _res["s2"]
+
+    _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+        alt.X("Year:T"),
         alt.Y("Distance").scale(domain=[13, 19]),
+    )
+    _line = _scatter.transform_regression("Year", "Distance").mark_line(
+        color="red"
     )
 
     mo.md(
-        f"""
+        rf"""
     /// details | (a) Make a scatter plot of the length of the jump by year. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_chart)}
+    {mo.as_html(_scatter)}
 
     Yes, the points appear approximately linear.
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(alt, df_ex5, linreg, mo, pl):
-    _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
-
-    _chart_scatter = df_ex5.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
-        alt.X("Year:T"), # .scale(domain=[(1890,1,1), (2000,1,1)]),
-        alt.Y("Distance").scale(domain=[13, 19]),
-    )
-
-    _chart_regression = _chart_scatter.transform_regression(
-        "Year", "Distance"
-    ).mark_line(color="red")
-
-    mo.md(
-        rf"""
     /// details |  (b) Fit a least squares regression line.
 
-    Using `linreg`, $\beta_0$ = {_res['β0']:.2f} and $\beta_1$ = {_res['β1']:.3f}.
+    Using `linreg`, $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.3f}.
 
-    {mo.as_html(_chart_scatter + _chart_regression)}
+    {mo.ui.altair_chart(_line + _scatter)}
+    ///
 
-    ///"""
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(df_ex5, linreg, mo, pl):
-    _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
-
-
-    mo.md(
-        rf"""
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    Also using the `linreg` function, $s^2$ = {_res['s2']:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res['s2'] ** 0.5:.3f}.
-
+    $s^2$ = {_s2:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_s2**0.5:.3f}.
     ///
     """
     )
@@ -405,9 +411,7 @@ def _(df_ex5, linreg, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex6 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-6.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         f"""
     ### Ex 10.6
@@ -415,166 +419,128 @@ def _(mo, pl):
     The following data give the barometric pressure (in inches of mercury) and the boiling point (in °F) of water in the Alps.
 
     {
-            mo.ui.table(
-                df_ex6,
-                label="Boiling Point of Water in the Alps",
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False
+            mo.center(
+                mo.as_html(
+                    df_ex(6)
+                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .tab_header(title="Boiling Point of Water in the Alps")
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: A. C. Atkinson (1985), _Plots, Transformations and Regression_, Oxford: Clarendon Press. p. 4. Reprinted in _Small Data Sets_, pp. 270-271."
+                        )
+                    )
+                )
             )
         }
-
     """
     )
-    return (df_ex6,)
+    return
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex6, mo):
-    _chart = df_ex6.plot.scatter(
+def _(alt, df_ex, linreg, mo, pl):
+    _df = df_ex(6)
+    _res = _df.select(linreg(pl.col("Pressure"), pl.col("Temp"))).item()
+
+    _scatter = _df.plot.scatter(
         alt.X("Pressure").scale(domain=[20, 31]),
         alt.Y("Temp").scale(domain=[192, 215]),
     )
 
+    _line = _scatter.transform_regression("Pressure", "Temp").mark_line(
+        color="red"
+    )
+
     mo.md(
-        f"""
+        rf"""
     /// details | (a) Make a scatter plot of the boiling point by barometric pressure. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_chart)}
+    {mo.ui.altair_chart(_scatter)}
 
     Yes, the relationship is approximately linear.
-
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(alt, df_ex6, linreg, mo, pl):
-    _res = df_ex6.select(linreg(pl.col("Pressure"), pl.col("Temp"))).item()
-
-    _chart_scatter = df_ex6.plot.scatter(
-        alt.X("Pressure").scale(domain=[20, 31]),
-        alt.Y("Temp").scale(domain=[192, 215]),
-    )
-
-    _chart_regression = _chart_scatter.transform_regression(
-        "Pressure", "Temp"
-    ).mark_line(color="red")
-
-    mo.md(
-        rf"""
     /// details | (b) Fit a least squares regression line. What proportion of variation in the boiling point is accounted for by linear regression on the barometric pressure?
 
-    Using `linreg`, $\beta_0$ = {_res['β0']:.2f}, $\beta_1$ = {_res['β1']:.3f}, and $r^2$ = {_res['r2']:.3f}. That is, {_res['r2'] * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
+    Using `linreg`, $\beta_0$ = {_res["β0"]:.2f}, $\beta_1$ = {_res["β1"]:.3f}, and $r^2$ = {_res["r2"]:.3f}. That is, {_res["r2"] * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
 
-    {mo.as_html(_chart_scatter + _chart_regression)}
-
+    {mo.ui.altair_chart(_line + _scatter)}
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(df_ex6, linreg, mo, pl):
-    _res = df_ex6.select(linreg(pl.col("Pressure"), pl.col("Temp"))).item()
-
-    mo.md(
-        rf"""
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
     Also using the `linreg` function, $s^2$ = {_res["s2"]:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res["s2"] ** 0.5:.3f}.
 
-    ///
-    """
+    ///"""
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
+def _(df_ex, md, mo, pl):
     df_ex7 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-7.json").explode(pl.all())
 
     mo.md(
-        f"""
+        rf"""
     ### Ex 10.7
 
     The following table shows Olympic 100 meter backstroke winning times for women for the years 1924 to 1992 (there were no Olympic games in 1940 and 1944).
 
     {
-            mo.ui.table(
-                df_ex7,
-                label="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)",
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False,
+            mo.center(
+                mo.as_html(
+                    df_ex(7)
+                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .tab_header(
+                        title="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)"
+                    )
+                    .fmt_integer(columns="Year", use_seps=False)
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: _The World Almanac and Book of Facts_ (1995). Mahwah, NJ: Funk & Wagnalls Corporation. p. 864."
+                        )
+                    )
+                )
             )
         }
-    """
-    )
-    return (df_ex7,)
-
-
-@app.cell(hide_code=True)
-def _(alt, df_ex7, mo, pl):
-    _chart = df_ex7.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
-        alt.X("Year:T"),
-        alt.Y("Time").scale(domain=[55, 90]),
-    )
-
-    mo.md(
-        f"""
-    /// details | (a) Make a scatter plot of the winning times by year. Does the relationship appear to be approximately linear?
-
-    {mo.as_html(_chart)}
-
-    Yes, the relationship is approximately linear.
-
-    ///
     """
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex7, linreg, mo, pl):
-    _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
+def _(alt, df_ex, linreg, mo, pl):
+    _df = df_ex(7)
+    _res = _df.select(linreg(pl.col("Year"), pl.col("Time"))).item()
 
-    _chart_scatter = df_ex7.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+    _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
         alt.X("Year:T"),
         alt.Y("Time").scale(domain=[55, 90]),
     )
 
-    _chart_regression = _chart_scatter.transform_regression(
+    _line = _scatter.transform_regression(
         "Year", "Time"
     ).mark_line(color="red")
 
     mo.md(
         rf"""
+    /// details | (a) Make a scatter plot of the winning times by year. Does the relationship appear to be approximately linear?
+
+    {mo.ui.altair_chart(_scatter)}
+
+    Yes, the relationship is approximately linear.
+    ///
+
     /// details | (b) Fit a least squares regression line.
 
     Using `linreg`, $\beta_0$ = {_res['β0']:.1f} and $\beta_1$ = {_res['β1']:.3f}.
 
-    {mo.as_html(_chart_scatter + _chart_regression)}
-
+    {mo.ui.altair_chart(_line + _scatter)}
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(df_ex7, linreg, mo, pl):
-    _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
-
-    mo.md(
-        rf"""
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
     Also using the `linreg` function, $s^2$ = {_res["s2"]:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res["s2"] ** 0.5:.3f}.
-
     ///
     """
     )
@@ -632,10 +598,76 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.callout(
-        mo.md(
-            r"""
+def _(get_source, linreg, mo, pl, stats):
+    def slope_test(
+        df: pl.DataFrame,
+        x: str,
+        y: str,
+        b: float = 0,
+        alternative: str = "two-sided",
+    ) -> tuple[float, float]:
+        """
+        returns (t-statistic, P-value) of observed data under H0: beta_1 = b
+
+        input:
+        - df: the dataset (polars dataframe)
+        - x, y: column names for observations
+        - b: given constant to compare with beta_1. defaults to 0
+        - alternative:
+            'two-sided': beta_1 ≠ b which is the default
+            'less': beta_1 < b
+            'greater': beta_1 > b
+
+        output:
+        a tuple (t, pval) containing the t-statisic and the P-value
+        """
+        res = df.select(linreg(pl.col(x), pl.col(y))).item()
+        t = (res["β1"] - b) / res["se_β1"]
+        n = res["n"]
+        match alternative:
+            case "two-sided":
+                pval = 2 * stats.t.sf(abs(t), n - 2).item()
+            case "greater":
+                pval = stats.t.sf(t, n - 2).item()
+            case "less":
+                pval = stats.t.cdf(t, n - 2).item()
+            case _:
+                raise ValueError("unknown alternative value.")
+        return (t, pval)
+
+
+    def estimate_interval(
+        df: pl.DataFrame,
+        x: str,
+        y: str,
+        x_star: float,
+        PI: bool = False,
+        α: float = 0.05,
+    ) -> list[float]:
+        """
+        Gives the confidence/prediction interval for estimation.
+
+        Input:
+        - df: the dataset (polars dataframe)
+        - x, y: column names for observations
+        - x_star: input point for estimation
+        - PI: defaults to False (calculate a CI)
+        - α: significance level
+
+        Output:
+        the list [low, high] designating the calculated interval.
+        """
+        res = df.select(linreg(pl.col(x), pl.col(y), x_star=x_star)).item()
+        y_star = res["β0"] + res["β1"] * x_star
+        t_crit = stats.t.ppf(1 - α / 2, res["n"] - 2).item()  # critical value
+        se = res["se_est_pi"] if PI else res["se_est_ci"]
+        return [y_star - t_crit * se, y_star + t_crit * se]
+
+
+    mo.ui.tabs(
+        {
+            "Theory": mo.md(
+                r"""
     The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
 
     $$
@@ -654,12 +686,35 @@ def _(mo):
     \hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.
     $$
 
-    However, a $100(1-\alpha)$% _prediction interval_ for $Y^*$ is wider than a $100(1-\alpha)$% confidence interval for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
+    A $100(1-\alpha)\%$ CI for $\mu^*$ is given by
+
+    $$
+    \hat{\mu}^* \pm t_{n-2, \alpha/2} s \sqrt{\frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.
+    $$
+
+    A $100(1-\alpha)$% _prediction interval_ (PI) for $Y^*$ is given by
+
+    $$
+    \hat{Y}^* \pm t_{n-2, \alpha/2} s \sqrt{1 + \frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.
+    $$
+
+    However, a $100(1-\alpha)$% PI for $Y^*$ is wider than a CI for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
     """
-        ),
-        kind="info",
+            ),
+            "Implementation": mo.md(rf"""
+    The `scipy` function [`stats.linregress`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.linregress.html) can also be used to test if $\beta_1 = 0$.
+
+    Here we define a more general `slope_test` to test if $\beta_1$ is differenct than a given slope.
+
+    {get_source(slope_test)}
+
+    We also define a function `estimate_interval` to calculate the CI/PI for estimation.
+
+    {get_source(estimate_interval)}
+        """),
+        }
     )
-    return
+    return estimate_interval, slope_test
 
 
 @app.cell(hide_code=True)
@@ -675,47 +730,23 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex5, linreg, mo, pl, stats):
-    _res = df_ex5.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
+def _(df_ex, estimate_interval, mo, slope_test):
+    _df = df_ex(5)
 
-    _t = _res['β1'] / _res['se_β1']
-    _pval = stats.t.sf(_t, df_ex5.height-2)
+    _t, _pval = slope_test(_df, "Year", "Distance")
+
+    [_low, _high] = estimate_interval(_df, "Year", "Distance", 2004, PI=True)
 
     mo.md(
         rf"""
     /// details | (a) Is there a significant increasing linear trend in the triple jump distance? Test at $\alpha = .05$.
 
     This is a test of $H_0: \beta_1 \le 0$ and the $t$-statistic is {_t:.2f} with a one-sided $P$-value of {_pval:.2e} < $\alpha$. So yes there is a significant increasing trend.
-
-
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(df_ex5, linreg, mo, pl, stats):
-    _x = 2004
-    _α = 0.05
-    _res = df_ex5.select(
-        linreg(pl.col("Year"), pl.col("Distance"), x_star=_x)
-    ).item()
-    _n = df_ex5.height
-
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_pi_low, _pi_high] = [
-        _y - _t_star * _res["se_est_pi"],
-        _y + _t_star * _res["se_est_pi"],
-    ]
-
-    mo.md(
-        rf"""
     /// details | (b) Calculate a 95% PI for the winning jump in 2004. Do you think this prediction is reliable? Why or why not? Would a 95% CI for the winning jump in 2004 have a meaningful interpretation? Explain.
 
-    A 95% PI for the winning jump in 2004 is [{_pi_low:.2f}, {_pi_high:.2f}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
-
+    A 95% PI for the winning jump in 2004 is [{_low:.2f}, {_high:.2f}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
     ///
     """
     )
@@ -735,59 +766,30 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex6, linreg, mo, pl, stats):
-    _x = 28
-    _α = 0.05
-    _res = df_ex6.select(
-        linreg(pl.col("Pressure"), pl.col("Temp"), x_star=_x)
-    ).item()
-    _n = df_ex6.height
+def _(df_ex, estimate_interval, mo):
+    _df = df_ex(6)
+    [_low, _high] = estimate_interval(_df, "Pressure", "Temp", 28)
 
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_ci_low, _ci_high] = [
-        _y - _t_star * _res["se_est_ci"],
-        _y + _t_star * _res["se_est_ci"],
-    ]
-
-
-    mo.md(
-        fr"""
+    mo.output.append(
+        mo.md(
+            rf"""
     /// details | (a) Calculate a 95% CI for the boiling point if the barometric pressure is 28 inches of mercury. Interpret your CI.
 
-    The said CI is calculated to be [{_ci_low:.2f}, {_ci_high:.2f}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
-
-    ///
-    """
+    The said CI is calculated to be [{_low:.2f}, {_high:.2f}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
+    ///"""
+        )
     )
-    return
 
+    [_low, _high] = estimate_interval(_df, "Pressure", "Temp", 31)
 
-@app.cell(hide_code=True)
-def _(df_ex6, linreg, mo, pl, stats):
-    _x = 31
-    _α = 0.05
-    _res = df_ex6.select(
-        linreg(pl.col("Pressure"), pl.col("Temp"), x_star=_x)
-    ).item()
-    _n = df_ex6.height
-
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_low, _high] = [
-        _y - _t_star * _res["se_est_ci"],
-        _y + _t_star * _res["se_est_ci"],
-    ]
-
-
-    mo.md(
-        rf"""
+    mo.output.append(
+        mo.md(
+            rf"""
     /// details | (b) Calculate a 95% CI for the boiling point if the barometric pressure is 31 inches of mercury. Compare this with the CI of (a).
 
     The said CI is calculated to be [{_low:.2f}, {_high:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
-
-    ///
-    """
+    /// """
+        )
     )
     return
 
@@ -805,28 +807,10 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(linreg, mo, pl, stats):
-    _df = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-4.json").explode(pl.all())
+def _(df_ex, estimate_interval, mo):
+    _df = df_ex(4)
 
-
-    def _estimate_interval(
-        df: pl.DataFrame,
-        x: str,
-        y: str,
-        x_star: float,
-        α: float = 0.05,
-        kind: str = "CI",
-    ) -> list[float]:
-        res = df.select(linreg(pl.col(x), pl.col(y), x_star=x_star)).item()
-        y_star = res["β0"] + res["β1"] * x_star
-        t_crit = stats.t.ppf(1 - α / 2, res["n"]).item()  # critical value
-        se = res["se_est_ci"] if kind == "CI" else res["se_est_pi"]
-        return [y_star - t_crit * se, y_star + t_crit * se]
-
-
-    [_low, _high] = _estimate_interval(
-        _df, x="LAST", y="NEXT", x_star=3, kind="PI"
-    )
+    [_low, _high] = estimate_interval(_df, x="LAST", y="NEXT", x_star=3, PI=True)
 
     mo.output.append(
         mo.md(
@@ -838,9 +822,7 @@ def _(linreg, mo, pl, stats):
         )
     )
 
-    [_low, _high] = _estimate_interval(
-        _df, x="LAST", y="NEXT", x_star=3, kind="CI"
-    )
+    [_low, _high] = estimate_interval(_df, x="LAST", y="NEXT", x_star=3, PI=False)
 
     mo.output.append(
         mo.md(
@@ -852,9 +834,7 @@ def _(linreg, mo, pl, stats):
         )
     )
 
-    [_low, _high] = _estimate_interval(
-        _df, x="LAST", y="NEXT", x_star=1, kind="PI"
-    )
+    [_low, _high] = estimate_interval(_df, x="LAST", y="NEXT", x_star=1, PI=True)
 
     mo.output.append(
         mo.md(
@@ -881,47 +861,25 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex7, linreg, mo, pl, stats):
-    _x = 2004
-    _α = 0.05
-    _res = df_ex7.select(
-        linreg(pl.col("Year"), pl.col("Time"), x_star=_x)
-    ).item()
-    _n = df_ex7.height
+def _(df_ex, estimate_interval, linreg, mo, pl):
+    _df = df_ex(7)
+    [_low, _high] = estimate_interval(_df, "Year", "Time", 2004, PI=True)
 
-    _y = _res["β0"] + _res["β1"] * _x
-    _t_star = stats.t.ppf(1 - _α / 2, _n - 2).item() # critical value
-    [_low, _high] = [
-        _y - _t_star * _res["se_est_pi"],
-        _y + _t_star * _res["se_est_pi"],
-    ]
+
+    _y = 60
+    _res = _df.select(linreg(pl.col("Year"), pl.col("Time"))).item()
+    _x = (_y - _res["β0"]) / _res["β1"]
 
     mo.md(
         rf"""
     /// details | (a) Calculate a 95% PI for the winning time in 2004. Do you think this prediction is reliable? Why or why not?
 
     The specified PI is calculated to be [{_low:.2f}, {_high:.2f}]. However, this prediction is unreliable because we are extrapolating outside the data range (latest available year was 1996).
-
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(df_ex7, linreg, mo, pl):
-    _y = 60
-    _res = df_ex7.select(linreg(pl.col("Year"), pl.col("Time"))).item()
-
-    _x = (_y - _res["β0"]) / _res["β1"]
-
-
-    mo.md(
-        rf"""
     /// details | (b) Use the regression equation to find the year in which the winning time would break 1 minute. Given that the Olympics are every four years, during which Olympics would this happen?
 
     The year {_x:.0f} (by inverse regression).
-
     ///
     """
     )
