@@ -33,7 +33,7 @@ def _():
     def df_ex(n: int) -> pl.DataFrame:
         """return dataframe of exercise number n"""
         fname = f"../SDAEI-Tamhane/ch10/Ex10-{n}.json"
-        print(f'loading exercise data from "{fname}"')
+        # print(f'loading exercise data from "{fname}"')
         return pl.read_json(fname).explode(pl.all())
     return alt, df_ex, get_source, html, md, mo, np, pl, stats
 
@@ -477,9 +477,7 @@ def _(alt, df_ex, linreg, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo, pl):
-    df_ex7 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-7.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         rf"""
     ### Ex 10.7
@@ -887,9 +885,7 @@ def _(df_ex, estimate_interval, linreg, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex13 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-13.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         rf"""
     ### Ex 10.13
@@ -897,11 +893,17 @@ def _(mo, pl):
     The U.S. infant mortality rates (IMR) (per 1000 live births) for both sexes and all races for the years 1981-1990 (coded as years 1-10) were as follows:
 
     {
-            mo.ui.table(
-                df_ex13,
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False,
+            mo.center(
+                mo.as_html(
+                    df_ex(13)
+                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .fmt_integer(columns="Year", use_seps=False)
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: _The World Almanac and Book of Facts_ (1994), Mahwah, NJ: Funk & Wagnalls Corporation, p. 956."
+                        )
+                    )
+                )
             )
         }
 
@@ -926,34 +928,30 @@ def _(mo, pl):
     Answer the following questions based on this output.
     """
     )
-    return (df_ex13,)
-
-
-@app.cell(hide_code=True)
-def _(df_ex13, mo, stats):
-    _β1 = 0.2697
-    _β10 = 0.3
-    _se = 0.01372
-    _n = df_ex13.height
-    _t = (_β1 - _β10) / _se
-    _pval = stats.t.cdf(_t, _n-2)
-
-    mo.md(
-        rf"""
-    /// details | (a) What was the average rate of decrease in the infant mortality rate per year during 1981-1990? Suppose that for the rest of the Western world the rate of decrease in IMR was 0.3 deaths per year per 1000 live births. Was the U.S. rate of decrease significantly less than that for the rest of the Western world? Use $\alpha$ = .05.
-
-    Reading off the MINITAB output, the rate of IMR decrease is {_β1} deaths per 1,000 live births per year. 
-
-    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\textrm{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.3f} with $P$-value {_pval:.3f} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
-
-    ///
-    """
-    )
     return
 
 
 @app.cell(hide_code=True)
 def _(mo, np, stats):
+    _β1 = 0.2697
+    _β10 = 0.3
+    _se = 0.01372
+    _n = 10
+    _t = (_β1 - _β10) / _se
+    _pval = stats.t.cdf(_t, _n - 2)
+
+    mo.output.append(
+        mo.md(
+            rf"""
+    /// details | (a) What was the average rate of decrease in the infant mortality rate per year during 1981-1990? Suppose that for the rest of the Western world the rate of decrease in IMR was 0.3 deaths per year per 1000 live births. Was the U.S. rate of decrease significantly less than that for the rest of the Western world? Use $\alpha$ = .05.
+
+    Reading off the MINITAB output, the rate of IMR decrease is {_β1} deaths per 1,000 live births per year. 
+
+    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\textrm{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.3f} with $P$-value {_pval:.3f} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
+    /// """
+        )
+    )
+
     _α = 0.05
     _n = 10
     _β0 = 12.0333
@@ -968,16 +966,15 @@ def _(mo, np, stats):
     _se_est_pi = _s * np.sqrt(1 + 1 / _n + (_x - _x_mean) ** 2 / _sxx)
     _err = _t_crit * _se_est_pi
 
+    mo.output.append(
+        mo.md(
+            rf"""
+    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{{xx}}$ can be obtained from the values of $\textrm{{Stdev}}(\hat{{\beta}}_1)$ and $s$ given in the MINITAB output.)
 
-    mo.md(
-        r"""
-    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{xx}$ can be obtained from the values of $\textrm{Stdev}(\hat{\beta}_1)$ and $s$ given in the MINITAB output.)
-
-    $S_{xx}$ can be obtained as in the note, or simply $S_{xx} = \textrm{SSR}/\hat{\beta}_1^2$, and both $\textrm{SSR}$ and $\hat{\beta}_1$ are in the MINITAB output. Anyways, the calculated IMR for the year 1995 is """
-        f""" {_y:.2f} ± {_err:.2f} = [{_y - _err:.2f}, {_y + _err:.2f}].
-
+    $S_{{xx}}$ can be obtained as in the note, or simply $S_{{xx}} = \textrm{{SSR}}/\hat{{\beta}}_1^2$, and both $\textrm{{SSR}}$ and $\hat{{\beta}}_1$ are in the MINITAB output. Anyways, the calculated IMR for the year 1995 is {_y:.2f} ± {_err:.2f} = [{_y - _err:.2f}, {_y + _err:.2f}].
     ///
     """
+        )
     )
     return
 
@@ -1051,11 +1048,6 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    return
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -1089,9 +1081,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex16 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-16.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         rf"""
     ### Ex 10.16
@@ -1099,25 +1089,34 @@ def _(mo, pl):
     A prime is a positive integer that has no integer factors other than 1 and itself (1 is not regarded as a prime). The number of primes in any given interval of whole numbers is highly irregular. However, the proportion of primes less than or equal to any given number $x$ (denoted by $p(x)$) follows a regular pattern as $x$ increases. The following table gives the number and proportion of primes for $x = 10^n$ for $n = 1, 2, \ldots, 10$. The objective of the present exercise is to discover this pattern.
 
     {
-            mo.ui.table(
-                df_ex16,
-                selection=None,
-                show_data_types=False,
+            mo.center(
+                mo.as_html(
+                    df_ex(16)
+                    .style.tab_options(table_font_size=13, container_width="70%")
+                    .fmt_integer(columns="Primes")
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: W. Dunham (1994), _The Mathematical Universe_, New York: Wiley, p. 196."
+                        )
+                    )
+                )
             )
         }
     """
     )
-    return (df_ex16,)
+    return
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex16, mo, pl):
-    _df = df_ex16.with_columns(
-        x=10.0 ** pl.col("x").str.extract("\\^(\\d+)").cast(int)
-    ).with_columns(
-        h1=10000 / pl.col("x"),
-        h2=1000 / pl.col("x").sqrt(),
-        h3=1 / pl.col("x").log10(),
+def _(alt, df_ex, mo, pl):
+    _df = (
+        df_ex(16)
+        .with_columns(x=10.0 ** pl.col("x").str.extract("\\^(\\d+)").cast(int))
+        .with_columns(
+            h1=10000 / pl.col("x"),
+            h2=1000 / pl.col("x").sqrt(),
+            h3=1 / pl.col("x").log10(),
+        )
     )
 
     _chart = (
@@ -1128,53 +1127,43 @@ def _(alt, df_ex16, mo, pl):
         .repeat(column=["h1", "h2", "h3"])
     )
 
+    # regression through the origin
+    _β1 = _df.select(
+        (pl.col("Prop") ** 2).sum() / (pl.col("h3") * pl.col("Prop")).sum()
+    ).item()
+
     mo.md(
         r"""
     /// details | (a) Plot the proportion of primes, $p(x)$, against $10,000/x$, $1000/\sqrt{x}$, and $1 / \log_{10}x$. Which relationship appears most linear?
 
-    In the charts below, h1 = $10,000/x$, h2 = $1000/\sqrt{x}$, and h3 = $1 / \log_{10}x$. Apparently the relationship between $1 / \log_{10}x$ and $p(x)$ appears most linear.
-    """
+    In the charts below, h1 = $10,000/x$, h2 = $1000/\sqrt{x}$, and h3 = $1 / \log_{10}x$. Apparently the relationship between $1 / \log_{10}x$ and $p(x)$ appears most linear. """
         f"""
     {mo.as_html(_chart)}
     ///
     """
-    )
-    return
+        r"""
+    /// details | (b) Estimate the slope of the line $p(x) = \beta_0 + \beta_1 \cdot 1/\log_{10}x$ and show that $\hat{\beta}_1 \approx \log_{10}e = 0.4343$.
 
-
-@app.cell(hide_code=True)
-def _(df_ex16, linreg, mo, pl):
-    _res = (
-        df_ex16.with_columns(
-            x=10.0 ** pl.col("x").str.extract("\\^(\\d+)").cast(int)
-        )
-        .with_columns(
-            h3=1 / pl.col("x").log10(),
-        )
-        .select(linreg(pl.col("h3"), pl.col("Prop")))
-        .item()
-    )
-
-    mo.md(
+    Because $p(x) \to 0$ as $\textrm{h3} \to 0$, it's appropriate to assume $\beta_0 = 0$ and use _regression through the origin_ (Exercise 8) to calculate """
         rf"""
-    /// details | (b) Estimate the slope of the line $p(x) = \beta_0 + \beta_1 \cdot 1/\log_{{10}}x$ and show that $\hat{{\beta}}_1 \approx \log_{{10}}e = 0.4343$.
 
-    Using `linreg` and $\alpha$ = 0.05, $\hat{{\beta}}_0 = {_res["β0"]:.4f}$ and $\hat{{\beta}}_1 = {_res["β1"]:.4f} \approx \log_{{10}}e = 0.4343$.
-
-
+    $$
+    \hat{{\beta}}_1 = {_β1:.4f} \approx  \log_{{10}}e = 0.4343.
+    $$
     ///
     """
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
         r"""
     /// details | (c) Explain how the relationship found in (b) roughly translates into the _prime number theorem_: For large $x$, $p(x) \approx 1 / \log_e x$.
 
-    TODO
+    For large $x$,
+
+    $$
+    \begin{align*}
+    p(x) &= \beta_1 \frac{1}{\log_{10}x} \\
+    &\approx \frac{\log_{10}e}{{\log_{10}x}} \\
+    &=  \frac{1}{\log_e x}.
+    \end{align*}
+    $$
     ///
     """
     )
