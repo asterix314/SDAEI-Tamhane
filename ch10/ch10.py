@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.16.1"
+__generated_with = "0.16.2"
 app = marimo.App(width="medium")
 
 
@@ -1171,9 +1171,7 @@ def _(alt, df_ex, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex17 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-17.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         rf"""
     ### Ex 10.17
@@ -1181,11 +1179,18 @@ def _(mo, pl):
     In a memory retention experiment subjects were asked to memorize a list of disconnected items, and then were asked to recall them at various times up to a week later. The proportion $p$ of items recalled at times $t$ (in minutes) is given below.
 
     {
-            mo.ui.table(
-                df_ex17,
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False,
+            mo.center(
+                mo.as_html(
+                    df_ex(17)
+                    .style.tab_options(table_font_size=13, container_width="40%")
+                    .cols_label(P="p")
+                    .fmt_integer(columns="t")
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: F. Mosteller, R. E. K. Rourke, and G. B. Thomas (1970), _Probability with Statistical Applications_, 2nd ed., Reading, MA: Addison-Wesley. Reprinted in _Small Data Sets_, p. 128."
+                        )
+                    )
+                )
             )
         }
     """
@@ -1194,33 +1199,45 @@ def _(mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(alt, df_ex, linreg, mo, np, pl):
+    _df = df_ex(17).with_columns(h=pl.col("t").log())
+
+    _res = _df.select(linreg(pl.col("h"), pl.col("P"))).item()
+    _β0, _β1 = _res["β0"], _res["β1"]
+
+    _scatter = _df.plot.scatter(
+        alt.X("h").title("h = ln t"), alt.Y("P").title("p")
+    )
+    _line = _scatter.transform_regression("h", "P").mark_line(color="red")
+
     mo.md(
         r"""
     /// details | (a) Note that $t$ increases almost geometrically throughout. This suggests that a logarithmic transformation of $t$ might linearize the relationship. Plot $p$ vs. $\ln{t}$. Is the relationship approximately linear?
 
-    ///
     """
-    )
-    return
+        rf"""{mo.ui.altair_chart(_scatter)}
 
+    Yes. The relationship appears approximately linear.
+    ///
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
     /// details | (b) Fit a trend line to the plot in (a). From the trend line estimate the time for 50% retention.
 
-    ///
+    The trend line is $\hat p = {_β0:.3f} - {abs(_β1):.3f}h$.
+
+    {mo.ui.altair_chart(_line + _scatter)}
+
+    """
+        r"""
+    Because $p = \beta_0 + \beta_1\;\ln{t}$, $t=\exp{\frac{p-\beta_0}{\beta_1}}$.
+    """
+        rf""" For p = 50% retention, $t = {np.exp((0.5 - _β0) / _β1).item():.1f}$ minutes.
     """
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    df_ex18 = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-18.json").explode(pl.all())
-
+def _(df_ex, md, mo):
     mo.md(
         rf"""
     ### Ex 10.18
@@ -1228,15 +1245,22 @@ def _(mo, pl):
     The following are the average distances of the planets in the solar system from the sun:
 
     {
-            mo.ui.table(
-                df_ex18,
-                label="(distances are in millions of miles.)",
-                show_column_summaries=False,
-                selection=None,
-                show_data_types=False,
+            mo.center(
+                mo.as_html(
+                    df_ex(18)
+                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .tab_stub(rowname_col="No")
+                    .tab_stubhead(label="Planet No.")
+                    .cols_label(Dist="Distance")
+                    .fmt_integer(columns="No")
+                    .tab_source_note(
+                        source_note=md(
+                            "This exercise is based on Example 6, Ch. 3 of F. Mosteller. S. E. Fienherg, and R. E. K. Rourke (1983). _Beginning Stalislics with Data Analysis_, Reading. MA: Addison-Wesley."
+                        )
+                    )
+                )
             )
         }
-
     """
     )
     return
@@ -1249,27 +1273,11 @@ def _(mo):
     /// details | (a) How does the distance of a planet from the sun increase with the planet number? Find a transformation of the distance that gives a linear relationship with respect to the planet number.
 
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
     /// details | (b) Fit a least squares straight line after linearizing the relationship.
 
     ///
-    """
-    )
-    return
 
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
     /// details | (c) It is speculated that there is a planet beyond Pluto, called Planet X. Predict its distance from the sun.
 
     ///
