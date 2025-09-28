@@ -1237,7 +1237,7 @@ def _(alt, df_ex, linreg, mo, np, pl):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(df_ex, html, md, mo):
     mo.md(
         rf"""
     ### Ex 10.18
@@ -1251,7 +1251,7 @@ def _(df_ex, md, mo):
                     .style.tab_options(table_font_size=13, container_width="50%")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="Planet No.")
-                    .cols_label(Dist="Distance")
+                    .cols_label(Dist=html("Distance<br>(millions of miles)"))
                     .fmt_integer(columns="No")
                     .tab_source_note(
                         source_note=md(
@@ -1267,19 +1267,39 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(alt, df_ex, linreg, mo, np, pl):
+    _df = df_ex(18).with_columns(h=pl.col("Dist").log())
+
+    _scatter = _df.plot.scatter(
+        alt.X("No").scale(domain=[0, 11]).title("x=Planet No."),
+        alt.Y("h").scale(domain=[3, 9]).title("h=ln(Distance)"),
+    )
+    _line = _scatter.transform_regression("No", "h").mark_line(color="red")
+
+    _res = _df.select(linreg(pl.col("No"), pl.col("h"))).item()
+    _β0, _β1 = _res["β0"], _res["β1"]
+
     mo.md(
-        r"""
+        rf"""
     /// details | (a) How does the distance of a planet from the sun increase with the planet number? Find a transformation of the distance that gives a linear relationship with respect to the planet number.
 
+    The distances seem to increase exponentially with the planet number at a factor of 1.5 - 2. Therefore we take the logarithm of the distances.
+
+    {mo.as_html(_scatter)}
+
+    Yeah, the transformation appears to give a linear relationship.
     ///
 
     /// details | (b) Fit a least squares straight line after linearizing the relationship.
 
+    By `linreg`, the least squares line is $h = {_β0:.3f} + {_β1:.2f}\;x$.
+
+    {mo.ui.altair_chart(_line + _scatter)}
     ///
 
     /// details | (c) It is speculated that there is a planet beyond Pluto, called Planet X. Predict its distance from the sun.
 
+    $h^*={_β0:.3f} + {_β1:.2f} \cdot 11 = {_β0 + _β1 * 11:.3f}$. So distance = $\exp{{(h^*)}}$ = {np.exp(_β0 + _β1 * 11).item():.1f} millions of miles.
     ///
     """
     )
