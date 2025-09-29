@@ -1307,6 +1307,245 @@ def _(alt, df_ex, linreg, mo, np, pl):
 
 
 @app.cell(hide_code=True)
+def _(df_ex, html, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.19
+
+    The following are the speeds of the planets in the solar system as they revolve around the sun:
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(19)
+                    .style.tab_options(table_font_size=13, container_width="70%")
+                    .tab_stub(rowname_col="No")
+                    .tab_stubhead(label="Planet No.")
+                    .cols_label(
+                        Distan=html("Distance<br>(millions of miles)"),
+                        Speed=html("Speed<br>(miles per hour)"),
+                    )
+                    .cols_move_to_start(columns="Planet")
+                    .fmt_integer(columns=["No", "Speed"])
+                )
+            )
+        }
+
+    What relationship do you notice between the distances of the planets from the sun given in the previous exercise and planet speeds? Find a transformation of the speed that linearizes its relationship with the planet distance, and fit this relationship.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex, html, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.20
+
+    To relate the stopping distance of a car to its speed, ten cars were tested at five different speeds, two cars at each speed. The following data were obtained.
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(20)
+                    .style.tab_options(table_font_size=13, container_width="40%")
+                    .cols_label(
+                        x=html("Speed x<br>(mph)"),
+                        y=html("Stop. Dist. y<br>(ft)"),
+                    )
+                    .fmt_integer(columns="x")
+                    .tab_source_note(source_note=md("This exercise is based on Example 2A. Ch. 12 of F. Mosteller, S. E. Fienberg and R. E. K. Rourke. _op. cit._"))
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Fit an LS straight line to these data. Plot the residuals against the speed.
+
+    ///
+
+    /// details | (b) Comment on the goodness of the fit based on the overall $F$-statistic and the residual plot. Which two assumptions of the linear regression model seem to be violated?
+
+    ///
+
+    /// details | (c) Based on the residual plot, what transformation of stopping distance should be used to linearize the relationship with respect to speed? A clue to find this transformation is provided by the following engineering argument: In bringing a car to a stop, its kinetic energy is dissipated as its braking energy, and the two are roughly equal. The kinetic energy is proportional to the square of the car's speed, while the braking energy is proportional to the stopping distance, assuming a constant braking force.
+
+    ///
+
+    /// details | (d) Make this linearizing transformation and check the goodness of fit. What is the predicted stopping distance according to this model if the car is traveling at 40 mph?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex, html, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.21
+
+    The direct current output from a windmill ($y$) was measured against the wind velocity ($x$) in miles per hour. The following data were obtained.
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(21)
+                    .style.tab_options(table_font_size=13, container_width="60%")
+                    .cols_label(
+                        mph=html("Wind Velocity<br>(mph)"),
+                        amps=html("DC Output<br>(amp)"),
+                    )
+                    .tab_source_note(
+                        source_note=md(
+                            'Source: G. Joglekar, J. H. Schuenemeyer, and V. LaRicca (1989), "Lack of fit testing when replicates are not available," _The American Statistician_, 43, pp. 135-143. Reprinted in _Small Data Sets_, p. 271.'
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Make a scatter plot of the DC output vs. wind velocity. Describe the relationship. Refer to Figure 10.10. Find a transformation that linearizes the relationship. Fit the LS line.
+
+    ///
+
+    ///details | (b) Check the goodness of fit by making residual plots. Do the assumptions of linear regression seem to be satisfied?
+
+    ///
+
+    /// details | (c) What is the predicted output if the wind velocity is 8 mph?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.22
+
+    This data set illustrates the importance of graphical plotting in regression analysis.
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(22)
+                    .style.tab_options(table_font_size=13)
+                    .tab_stub(rowname_col="No")
+                    .tab_stubhead(label="No.")
+                    .fmt_integer(columns=["No", "x1", "x2"])
+                    .tab_source_note(
+                        source_note=md(
+                            'Source: F. J. Anscombe (1973). "Graphs in statistical analysis", _The American Statistician_. 27, pp. 17-21.'
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Make four scatter plots: $y_1$ vs. $x_1$, $y_2$ vs. $x_1$, $y_3$ vs. $x_1$, and $y_4$ vs. $x_2$. Comment on their appearances - in particular, the linearity of the relationship exhibited by the plots.
+
+    ///
+
+    /// details | (b) Fit LS straight lines to the four plots and compute the usual statistics that accompany the LS fits. Note that the numerical results are identical.
+
+    ///
+
+    /// details | (c) Why do you think the LS fits are identical even though the scatter plots are quite different? What does this say about the importance of plotting the data before fitting a model?
+
+    ///
+
+    /// details |  (d) What does this say about $r^2$ or the $t$-statistic for testing the significance of $\hat{\beta}_1$ as measures of the linearity of relationships?
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(df_ex, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.23
+
+    The approximate gestation time and birthweights are given in the following table for selected mammals. The gestation time $t$ (between fertilization and birth) for a mammal is related to the birthweight $w$ by the relationship $t = a\,b^w$, where $a$ and $b$ are constants. Regression methods can be used to estimate $a$ and $b$ by transforming this relationship into a linear model.
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(23)
+                    .style.tab_options(table_font_size=13, container_width="70%")
+                    .tab_stub(rowname_col="Mammal")
+                    .tab_stubhead(label="Mammal")
+                    .cols_label(kg="Birthweight (kg)", days="Gestation (days)")
+                    .fmt_integer(columns="days")
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: Adapted from W. Keienburg. D. Heinemann. and S. Schmitz eds. (1990). _Grizmek's Encyclopedia of Mammals_, New York: McGraw-Hill."
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Apply the log transformation to obtain a linear model of the form $y = \beta_0 + \beta_1 w$, where $y = \log{t}$. How are $\beta_0$ and $\beta_1$ related to $a$ and $b$, respectively?
+
+    ///
+
+    /// details |  (b) Plot log(gestation time) vs. weight. Is this relationship approximately linear?
+
+    ///
+
+    /// details | (c) Fit the linear model $y = \beta_0 + \beta_1 w$ to the transformed data.
+
+    ///
+
+    /// details | (d) Using the fitted model in (c), estimate the gestation time of a lion which weighs approximately 1.2 kg at birth.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""## 10.5 *Correlation Analysis""")
     return
