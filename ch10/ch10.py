@@ -263,7 +263,11 @@ def _(df_ex, html, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(4)
-                    .style.tab_options(table_font_size=13, container_width="60%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                        container_height="50vh",
+                    )
                     .tab_header(
                         title="Old Faithful Eruptions: Duration and Time Between Eruptions (in min.)"
                     )
@@ -274,7 +278,7 @@ def _(df_ex, html, md, mo):
                         NEXT=html("Time Between Eruptions<br>(NEXT)"),
                     )
                     .fmt_number(columns=["No", "NEXT"], drop_trailing_zeros=True)
-                    .cols_align(align="center", columns=["LAST", "NEXT"])
+                    .cols_align(align="center")
                     .tab_source_note(
                         source_note=md(
                             'Source: L. Denby and D. Pregibon ( 1987), "An example of the use of graphics in regression". _The American Statistician_, 41, pp. 33-38.'
@@ -353,7 +357,12 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(5)
-                    .style.tab_options(table_font_size=13, container_width="60%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                        container_height="50vh",
+                    )
+                    .cols_align("center")
                     .tab_header(
                         title="Men's Olympic Triple Jump Winning Distance (in meters)"
                     )
@@ -422,7 +431,11 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(6)
-                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="50%",
+                    )
+                    .cols_align("center")
                     .tab_header(title="Boiling Point of Water in the Alps")
                     .tab_source_note(
                         source_note=md(
@@ -488,7 +501,11 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(7)
-                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                    )
+                    .cols_align("center")
                     .tab_header(
                         title="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)"
                     )
@@ -896,7 +913,11 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(13)
-                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                    )
+                    .cols_align("center")
                     .fmt_integer(columns="Year", use_seps=False)
                     .tab_source_note(
                         source_note=md(
@@ -1092,7 +1113,11 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(16)
-                    .style.tab_options(table_font_size=13, container_width="70%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="70%",
+                    )
+                    .cols_align("center")
                     .fmt_integer(columns="Primes")
                     .tab_source_note(
                         source_note=md(
@@ -1182,7 +1207,11 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(17)
-                    .style.tab_options(table_font_size=13, container_width="40%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="50%",
+                    )
+                    .cols_align("center")
                     .cols_label(P="p")
                     .fmt_integer(columns="t")
                     .tab_source_note(
@@ -1248,7 +1277,11 @@ def _(df_ex, html, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(18)
-                    .style.tab_options(table_font_size=13, container_width="50%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="70%",
+                    )
+                    .cols_align("center")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="Planet No.")
                     .cols_label(Dist=html("Distance<br>(millions of miles)"))
@@ -1318,7 +1351,10 @@ def _(df_ex, html, mo):
             mo.center(
                 mo.as_html(
                     df_ex(19)
-                    .style.tab_options(table_font_size=13, container_width="70%")
+                    .style.tab_options(
+                        table_font_size=12,
+                    )
+                    .cols_align("center")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="Planet No.")
                     .cols_label(
@@ -1349,13 +1385,21 @@ def _(df_ex, html, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(20)
-                    .style.tab_options(table_font_size=13, container_width="40%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                    )
+                    .cols_align("center")
                     .cols_label(
                         x=html("Speed x<br>(mph)"),
                         y=html("Stop. Dist. y<br>(ft)"),
                     )
                     .fmt_integer(columns="x")
-                    .tab_source_note(source_note=md("This exercise is based on Example 2A. Ch. 12 of F. Mosteller, S. E. Fienberg and R. E. K. Rourke. _op. cit._"))
+                    .tab_source_note(
+                        source_note=md(
+                            "This exercise is based on Example 2A. Ch. 12 of F. Mosteller, S. E. Fienberg and R. E. K. Rourke. _op. cit._"
+                        )
+                    )
                 )
             )
         }
@@ -1400,7 +1444,12 @@ def _(df_ex, html, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(21)
-                    .style.tab_options(table_font_size=13, container_width="60%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="40%",
+                        container_height="50vh",
+                    )
+                    .cols_align("center")
                     .cols_label(
                         mph=html("Wind Velocity<br>(mph)"),
                         amps=html("DC Output<br>(amp)"),
@@ -1450,7 +1499,10 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(22)
-                    .style.tab_options(table_font_size=13)
+                    .style.tab_options(
+                        table_font_size=12,
+                    )
+                    .cols_align("center")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="No.")
                     .fmt_integer(columns=["No", "x1", "x2"])
@@ -1503,7 +1555,11 @@ def _(df_ex, md, mo):
             mo.center(
                 mo.as_html(
                     df_ex(23)
-                    .style.tab_options(table_font_size=13, container_width="70%")
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                    )
+                    .cols_align("center")
                     .tab_stub(rowname_col="Mammal")
                     .tab_stubhead(label="Mammal")
                     .cols_label(kg="Birthweight (kg)", days="Gestation (days)")
@@ -1546,6 +1602,62 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(df_ex, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.24
+
+    Hospitalization cost ($h$) that is reimbursed by insurance is approximately related to the length of stay $l$ in the hospital by the relationship $h = a\,l^b$, where $a$ and $b$ are constants. Regression methods can be used to estimate $a$ and $b$ by transforming this relationship into a linear model by making the log transformation. The reimbursed hospital cost and associated length of stay are given for a sample of 33 elderly people.
+
+    {
+            mo.center(
+                mo.as_html(
+                    df_ex(24)
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="60%",
+                        container_height="50vh",
+                    )
+                    .cols_align("center")
+                    .fmt_integer(columns=["h", "l"])
+                    .tab_source_note(
+                        source_note=md(
+                            "Data courtesy of Professor Susan Hughes, School of Public Health, University of Illinois. Chicago."
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Apply the log transformation to obtain a linear model of the form $y = \beta_0 + \beta_1 x$, where $x = \log l$ and $y = \log h$. How are $\beta_0$ and $\beta_1$ related to $a$ and $b$, respectively?
+
+    ///
+
+    /// details | (b) Plot $y = \log h$ vs. $x = \log l$. Is this relationship approximately linear?
+
+    ///
+
+    /// details |  (c) Fit the linear model $y = \beta_0 + \beta_1 x$ to the transformed data.
+
+    ///
+
+    /// details |  (d) Use the fitted model from (c) to estimate the average reimbursed cost for a 3-day hospital stay by an elderly person.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""## 10.5 *Correlation Analysis""")
     return
@@ -1574,41 +1686,49 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, ci, mo, pl, stats):
-    _df = pl.read_json("../SDAEI-Tamhane/ch10/Ex10-28.json").explode(pl.all())
-
-    mo.output.append(
-        mo.md(
-            rf"""
+def _(df_ex, md, mo):
+    mo.md(
+        rf"""
     ### Ex 10.28
 
     The following are the heights and weights of 30 eleven year old girls.
 
     {
-                mo.ui.table(
-                    _df,
-                    label="(Heights are in cms and weights are in kgs)",
-                    show_column_summaries=False,
-                    selection=None,
-                    show_data_types=False,
+            mo.center(
+                mo.as_html(
+                    df_ex(28)
+                    .style.tab_options(
+                        table_font_size=12,
+                        table_width="50%",
+                        container_height="50vh",
+                    )
+                    .cols_align("center")
+                    .fmt_integer(columns=["Height", "Weight"])
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: The Open University (1983). _MDST242 Srarisics in Society, Unit C3: Is my child normal?_, Milton Keynes: The Open University, Figure 3.12. Reprinted in _Small Data Sets_. p. 75."
+                        )
+                    )
                 )
-            }
-
+            )
+        }
     """
-        )
     )
+    return
 
-    _chart = _df.plot.scatter(
-        alt.X("Height").scale(domain=[130, 165]),
-        alt.Y("Weight").scale(domain=[20, 60]),
-    )
+
+@app.cell(hide_code=True)
+def _(ci, mo, pl, stats):
+    # _chart = _df.plot.scatter(
+    #     alt.X("Height").scale(domain=[130, 165]),
+    #     alt.Y("Weight").scale(domain=[20, 60]),
+    # )
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (a) Plot weights vs. heights.
 
-    {mo.as_html(_chart)}
 
     ///
     """
@@ -1661,14 +1781,13 @@ def _(alt, ci, mo, pl, stats):
                 pass
 
 
-    _r = _df.select(pl.corr("Height", "Weight")).item()
+    # _r = _df.select(pl.corr("Height", "Weight")).item()
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (b) Calculate the correlation coefficient. Test if it is significantly greater than 0.7.
 
-    {_r}
 
     ///
 
