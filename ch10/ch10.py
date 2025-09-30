@@ -1374,6 +1374,38 @@ def _(df_ex, html, mo):
 
 
 @app.cell(hide_code=True)
+def _(alt, df_ex, mo, pl):
+    _df = df_ex(19).with_columns(h=1 / pl.col("Speed") ** 2)
+
+    _scatter = _df.plot.scatter(
+        alt.X("Distan", title="distance"),
+        alt.Y("h", title="h=speed^(-2)", axis=alt.Axis(format="g")),
+    )
+
+    _β1 = _df.select(
+        (pl.col("Distan") * pl.col("h")).sum() / (pl.col("Distan") ** 2).sum()
+    ).item()
+
+    mo.md(
+        r""" 
+    Highschool physics tells us that a planet orbiting the sun at distance $R$ and speed $v$ will have centripetal acceleration $g = v^2/R$, which is provided by gravity $g = GM/R^2$. Therefore 
+
+    $$
+    R = \frac{GM}{v^2}.
+    $$
+
+    So the transformation we are looking for is $h = 1/\textrm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
+    """
+        rf"""
+    {mo.as_html(_scatter)}
+
+    To fit this linear relationship, we should force $\beta_0 = 0$ and use _regression through the origin_. $\hat{{\beta}}_1$ = {_β1:.2e}.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
 def _(df_ex, html, md, mo):
     mo.md(
         rf"""
