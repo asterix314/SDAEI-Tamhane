@@ -1441,25 +1441,83 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
+def _(alt, df_ex, linreg, mo, pl, stats):
+    _df = df_ex(20)
+    _res = _df.select(linreg(pl.col("x"), pl.col("y"))).item()
+    _β0, _β1, _f, _n = _res["β0"], _res["β1"], _res["f"], _res["n"]
+    _pval = stats.f.sf(_f, 1, _n - 2)
+
+    _scatter = _df.plot.scatter(
+        x=alt.X("x", title="speed").scale(domain=[15, 65]),
+        y=alt.Y("y", title="stop distance").scale(domain=[0, 230]),
+    ).properties(title="LS fit")
+    _line = _scatter.transform_regression("x", "y").mark_line(color="red")
+
+    _df = _df.with_columns(e=pl.col("y") - (_β0 + _β1 * pl.col("x")), y0=0)
+    _error = _df.plot.circle(
+        x=alt.X("x", title="speed").scale(domain=[15, 65]),
+        y=alt.Y("e", title="error").scale(domain=[-40, 50]),
+    ).properties(title="residuals")
+    _rule = _df.plot.rule(x="x", y="y0", y2="e")
+
+    mo.output.append(
+        mo.md(
+            rf"""
     /// details | (a) Fit an LS straight line to these data. Plot the residuals against the speed.
 
+    The fitted line is $y = {_β0:.2f} +  {_β1:.2f}x$.
+
+    {mo.as_html((_scatter + _line) | (_error + _rule))}
     ///
 
     /// details | (b) Comment on the goodness of the fit based on the overall $F$-statistic and the residual plot. Which two assumptions of the linear regression model seem to be violated?
 
+    The $F$-statistic is {_f:.2f} with $P$-value = {_pval:.2e}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
     ///
 
     /// details | (c) Based on the residual plot, what transformation of stopping distance should be used to linearize the relationship with respect to speed? A clue to find this transformation is provided by the following engineering argument: In bringing a car to a stop, its kinetic energy is dissipated as its braking energy, and the two are roughly equal. The kinetic energy is proportional to the square of the car's speed, while the braking energy is proportional to the stopping distance, assuming a constant braking force.
 
-    ///
-
-    /// details | (d) Make this linearizing transformation and check the goodness of fit. What is the predicted stopping distance according to this model if the car is traveling at 40 mph?
-
+    The engineering argument boils down to $\textrm{{distance}} \propto \textrm{{speed}}^2$. Therefore we should take the square root of stopping distance.
     ///
     """
+        )
+    )
+
+    _df = _df.with_columns(h=pl.col("y").sqrt())
+    _res = _df.select(linreg(pl.col("x"), pl.col("h"))).item()
+    _β0, _β1, _f, _n = _res["β0"], _res["β1"], _res["f"], _res["n"]
+    _pval = stats.f.sf(_f, 1, _n - 2)
+
+    _scatter = _df.plot.scatter(
+        x=alt.X("x", title="speed").scale(domain=[15, 65]),
+        y=alt.Y("h", title="h=√distance").scale(domain=[2, 18]),
+    ).properties(title="LS fit")
+    _line = _scatter.transform_regression("x", "h").mark_line(color="red")
+
+    _df = _df.with_columns(e=pl.col("h") - (_β0 + _β1 * pl.col("x")), y0=0)
+    _error = _df.plot.circle(
+        x=alt.X("x", title="speed").scale(domain=[15, 65]),
+        y=alt.Y("e", title="error").scale(domain=[-5, 5]),
+    ).properties(title="residuals")
+    _rule = _df.plot.rule(x="x", y="y0", y2="e")
+
+    _y = (_β0 + _β1 * 40) ** 2
+
+    mo.output.append(
+        mo.md(
+            rf"""
+    /// details | (d) Make this linearizing transformation and check the goodness of fit. What is the predicted stopping distance according to this model if the car is traveling at 40 mph?
+
+    The fitted line is $h = {_β0:.2f} +  {_β1:.2f}x$.
+
+    {mo.as_html((_scatter + _line) | (_error + _rule))}
+
+    The $F$-statistic is {_f:.2f} with $P$-value = {_pval:.2e}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
+
+    The stopping distance of a car traveling at 40 mph would be $y = h^2 = ({_β0:.2f} +  {_β1:.2f} \cdot 40)^2$ = {_y:.2f} feet.
+    ///
+    """
+        )
     )
     return
 
@@ -1831,13 +1889,36 @@ def _(ci, mo, pl, stats):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 10.6 Pitfalls of Regression and Correlation Analysis""")
+    mo.md(r"""## Advanced Exercises""")
     return
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r""" """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.33
+
+    Show that
+
+    $$
+    \sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) = 0.
+    $$
+
+    (_Hint_: Substitute $\hat{y}_i = \beta_0 + \beta_1 x_i = \bar{y} + \hat{\beta}_1 (x_i - \bar{x})$ and simplify.)
+    """
+    )
+    return
+
+
+@app.cell
+def _():
     return
 
 
