@@ -1059,14 +1059,60 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.callout(
-        mo.md(
-            r"""Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways."""
-        ),
-        kind="info",
+def _(alt, get_source, linreg, mo, pl):
+    def charts_linreg(
+        df: pl.dataframe, x_title: str = "x", y_title: str = "y"
+    ) -> tuple[alt.Chart, alt.Chart]:
+        """
+        draw chars related to diagnostics of simple linear regression.
+
+        input:
+        - df: polars dataframe. assumes existence of "x" and "y" columns.
+        - x/y_title: the axis titles to display
+
+        output:
+        - chart showing the LS regression line with data points
+        - residual chart.
+        """
+        res = df.select(linreg(pl.col("x"), pl.col("y"))).item()
+        β0, β1 = res["β0"], res["β1"]
+        scatter = df.plot.scatter(
+            x=alt.X("x").title(x_title).scale(zero=False, padding=10),
+            y=alt.Y("y").title(y_title).scale(zero=False, padding=10),
+        ).properties(title=f"LS fit:  β0 = {β0:.3g}, β1 = {β1:.3g}")
+        ls_line = scatter.transform_regression("x", "y").mark_line(color="red")
+        chart_regress = scatter + ls_line
+
+        error_df = df.with_columns(e=pl.col("y") - (β0 + β1 * pl.col("x")), y0=0)
+        error = error_df.plot.circle(
+            x=alt.X("x")
+            .title(x_title)
+            .scale(zero=False, padding=10)
+            .axis(grid=False),
+            y=alt.Y("e").title("error").scale(zero=False, padding=10),
+        ).properties(title="residuals")
+        fill = error_df.plot.rule(x="x", y="y0", y2="e", size=alt.value(0.2))
+        axis = error_df.plot.rule(y="y0")
+        chart_error = error + fill + axis
+
+        return (chart_regress, chart_error)
+
+
+    mo.ui.tabs(
+        {
+            "Theory": mo.md(
+                r"""
+    Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways."""
+            ),
+            "Implementation": mo.md(
+                f"""
+    Here we define a helper function to draw the diagnostic charts.
+
+    {get_source(charts_linreg)}"""
+            ),
+        }
     )
-    return
+    return (charts_linreg,)
 
 
 @app.cell(hide_code=True)
@@ -1441,33 +1487,22 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, pl, stats):
+def _(charts_linreg, df_ex, linreg, mo, pl, stats):
     _df = df_ex(20)
     _res = _df.select(linreg(pl.col("x"), pl.col("y"))).item()
     _β0, _β1, _f, _n = _res["β0"], _res["β1"], _res["f"], _res["n"]
     _pval = stats.f.sf(_f, 1, _n - 2)
 
-    _scatter = _df.plot.scatter(
-        x=alt.X("x", title="speed").scale(domain=[15, 65]),
-        y=alt.Y("y", title="stop distance").scale(domain=[0, 230]),
-    ).properties(title="LS fit")
-    _line = _scatter.transform_regression("x", "y").mark_line(color="red")
-
-    _df = _df.with_columns(e=pl.col("y") - (_β0 + _β1 * pl.col("x")), y0=0)
-    _error = _df.plot.circle(
-        x=alt.X("x", title="speed").scale(domain=[15, 65]),
-        y=alt.Y("e", title="error").scale(domain=[-40, 50]),
-    ).properties(title="residuals")
-    _rule = _df.plot.rule(x="x", y="y0", y2="e")
+    chart_ls, chart_error = charts_linreg(
+        _df, x_title="speed", y_title="stop distance"
+    )
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (a) Fit an LS straight line to these data. Plot the residuals against the speed.
 
-    The fitted line is $y = {_β0:.2f} +  {_β1:.2f}x$.
-
-    {mo.as_html((_scatter + _line) | (_error + _rule))}
+    {mo.as_html(chart_ls | chart_error)}
     ///
 
     /// details | (b) Comment on the goodness of the fit based on the overall $F$-statistic and the residual plot. Which two assumptions of the linear regression model seem to be violated?
@@ -1483,24 +1518,14 @@ def _(alt, df_ex, linreg, mo, pl, stats):
         )
     )
 
-    _df = _df.with_columns(h=pl.col("y").sqrt())
-    _res = _df.select(linreg(pl.col("x"), pl.col("h"))).item()
+    _df = _df.with_columns(pl.col("y").sqrt())
+    _res = _df.select(linreg(pl.col("x"), pl.col("y"))).item()
     _β0, _β1, _f, _n = _res["β0"], _res["β1"], _res["f"], _res["n"]
     _pval = stats.f.sf(_f, 1, _n - 2)
 
-    _scatter = _df.plot.scatter(
-        x=alt.X("x", title="speed").scale(domain=[15, 65]),
-        y=alt.Y("h", title="h=√distance").scale(domain=[2, 18]),
-    ).properties(title="LS fit")
-    _line = _scatter.transform_regression("x", "h").mark_line(color="red")
-
-    _df = _df.with_columns(e=pl.col("h") - (_β0 + _β1 * pl.col("x")), y0=0)
-    _error = _df.plot.circle(
-        x=alt.X("x", title="speed").scale(domain=[15, 65]),
-        y=alt.Y("e", title="error").scale(domain=[-5, 5]),
-    ).properties(title="residuals")
-    _rule = _df.plot.rule(x="x", y="y0", y2="e")
-
+    chart_ls, chart_error = charts_linreg(
+        _df, x_title="speed", y_title="√distance"
+    )
     _y = (_β0 + _β1 * 40) ** 2
 
     mo.output.append(
@@ -1508,9 +1533,7 @@ def _(alt, df_ex, linreg, mo, pl, stats):
             rf"""
     /// details | (d) Make this linearizing transformation and check the goodness of fit. What is the predicted stopping distance according to this model if the car is traveling at 40 mph?
 
-    The fitted line is $h = {_β0:.2f} +  {_β1:.2f}x$.
-
-    {mo.as_html((_scatter + _line) | (_error + _rule))}
+    {mo.as_html(chart_ls | chart_error)}
 
     The $F$-statistic is {_f:.2f} with $P$-value = {_pval:.2e}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
 
@@ -1560,7 +1583,7 @@ def _(df_ex, html, md, mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
-        r"""
+        rf"""
     /// details | (a) Make a scatter plot of the DC output vs. wind velocity. Describe the relationship. Refer to Figure 10.10. Find a transformation that linearizes the relationship. Fit the LS line.
 
     ///
