@@ -14,6 +14,7 @@ def _(mo):
 def _():
     import marimo as mo
     import polars as pl
+    from polars import col
     import numpy as np
     import altair as alt
     from scipy import stats
@@ -36,7 +37,7 @@ def _():
         fname = f"../SDAEI-Tamhane/ch10/Ex10-{n}.json"
         # print(f'loading exercise data from "{fname}"')
         return pl.read_json(fname).explode(pl.all())
-    return alt, dataclass, df_ex, get_source, html, md, mo, np, pl, stats
+    return alt, col, dataclass, df_ex, get_source, html, md, mo, np, pl, stats
 
 
 @app.cell(hide_code=True)
@@ -52,11 +53,7 @@ def _(mo):
             "Theory": mo.md(
                 r"""
     _Linear regression analysis_ begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The linear regression model
-
-    $$
-    Y_i = \beta_0 + \beta_1 x_i + \epsilon_i\ (i=1,2, \ldots, n)
-    $$
-
+    $$Y_i = \beta_0 + \beta_1 x_i + \epsilon_i\ (i=1,2, \ldots, n)$$
     has these basic assumptions:
 
     1. The predictor variable $x$ is regarded as nonrandom because it is assumed to be set by the investigator.
@@ -219,22 +216,14 @@ def _(get_source, mo, pl):
             "Theory": mo.md(
                 r"""
     The _least squares(LS) estimates_ $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
-
-    $$
-    \begin{align*}
+    $$\begin{align*}
     \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}}, \\
     \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x}
-    \end{align*}
-    $$
-
+    \end{align*}$$
     where $S_{xy} = \sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})$ and $S_{xx} = \sum_{i=1}^n (x_i - \bar{x})^2$. The *fitted values* are given by $\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i$ and the *residuals* by $e_i = y_i - \hat{y}_i$.
 
     The total sum of squares (SST), regression sum of squares (SSR) and error sum of squares (SSE) are defined as $\mathrm{SST} = \sum_{i=1}^n (y_i - \bar{y})^2$, $\mathrm{SSR} = \sum_{i=1}^n (\hat{y}_i - \bar{y})^2$, and $\mathrm{SSE} = \sum_{i=1}^n (y_i - \hat{y}_i)^2$. These sums of squares satisfy the identity $\mathrm{SST} = \mathrm{SSR} + \mathrm{SSE}$. A measure of goodness of fit of the least squares line is the *coefficient of determination*,
-
-    $$
-    r^2 = \frac{\mathrm{SSR}}{\mathrm{SST}} = 1 - \frac{\mathrm{SSE}}{\mathrm{SST}}
-    $$
-
+    $$r^2 = \frac{\mathrm{SSR}}{\mathrm{SST}} = 1 - \frac{\mathrm{SSE}}{\mathrm{SST}}$$
     which represents the proportion of variation in $y$ that is accounted for by regression on $x$. The *correlation coefficient* $r$ equals $\pm\sqrt{r^2}$, where $\mathrm{sign}(r) = \mathrm{sign}(\hat{\beta}_1)$. In fact, $r = \hat{\beta}_1 (s_x / s_y)$, where $s_x$ and $s_y$ are the sample standard deviations of $x$ and $y$, respectively.
 
     The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f.
@@ -321,12 +310,7 @@ def _(alt, df_ex, linreg, mo, pl):
     /// details | (b) Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
 
     When applied to the dataset, `linreg` gives $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about
-
-    $$
-    \beta_0 + \beta_1 \cdot 3 = {_β0:.2f} + {_β1:.2f} \cdot 3 = {_β0 + _β1 * 3:.2f}
-    $$
-
-    minutes.
+    $\beta_0 + \beta_1 \cdot 3$ = {_β0:.2f} + {_β1:.2f} × 3 = {_β0 + _β1 * 3:.2f} minutes.
 
     {mo.as_html(_scatter + _line)}
     ///
@@ -570,10 +554,7 @@ def _(mo):
     ### Ex 10.8
 
     Often the conditions of the problem dictate that the intercept coefficient $\beta_0$ must be zero, e.g., the sales revenue as a function of the number of units sold or the gas mileage of a car as a function of the weight of the car. This is called _regression through the origin_. Show that the LS estimate of the slope coefficient $\beta_1$ when fitting the straight line $y = \beta_1 x$ based on the data $(x_1, y_1), (x_2, y_2), \ldots, (x_n, y_n)$ is
-
-    $$
-    \beta_1 = \frac{\sum x_i y_i}{\sum x_i^2}.
-    $$
+    $$\beta_1 = \frac{\sum x_i y_i}{\sum x_i^2}.$$
     """
     )
     return
@@ -584,24 +565,14 @@ def _(mo):
     mo.md(
         r"""
     To find the minumum of the sum of errors
-
-    $$
-    Q = \sum (\beta_1 x_i - y_i)^2,
-    $$
-
-    we take its derivative with respect to $\beta_1$.
-
-    $$ \begin{align*} 
+    $$Q = \sum (\beta_1 x_i - y_i)^2,$$
+    we take its derivative with respect to $\beta_1$:
+    $$\begin{align*} 
     \frac{\partial Q}{\partial \beta_1} &= \sum 2x_i(\beta_1 x_i - y_i)\\
-    &= 2\sum \beta_1 x_i^2 - x_i y_i
-    \end{align*}
-    $$
-
+    &= 2\sum \beta_1 x_i^2 - x_i y_i.
+    \end{align*}$$
     Therefore the minimum is taken at
-
-    $$
-    \beta_1 = \frac{\sum x_i^2}{\sum x_i y_i}.
-    $$
+    $$\beta_1 = \frac{\sum x_i^2}{\sum x_i y_i}.$$
     """
     )
     return
@@ -685,36 +656,21 @@ def _(get_source, linreg, mo, pl, stats):
             "Theory": mo.md(
                 r"""
     The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
-
-    $$
-    \mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.
-    $$
-
-    These are used to construct confidence intervals and perform hypothesis tests on $\beta_0$ and $\beta_1$. For example, a $100(1-\alpha)$% confidence interval on $\beta_1$ is given by
-
-    $$
-    \hat{\beta_1} \pm t_{n-2, \alpha/2}\,\textrm{SE}(\hat{\beta_1}).
-    $$
+    $$\mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad
+    \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.$$
+    These are used to construct confidence intervals and perform hypothesis tests on $\beta_0$ and $\beta_1$. For example, a $100(1-\alpha)\%$ confidence interval on $\beta_1$ is given by
+    $$\hat{\beta_1} \pm t_{n-2, \alpha/2}\,\textrm{SE}(\hat{\beta_1}).$$
 
     A common use of the fitted regression model is to _predict_ $Y^*$ for specified $x = x^*$ or to _estimate_ $\mu^* = \textrm{E}(Y^*)$. In both cases we have
-
-    $$
-    \hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.
-    $$
+    $$\hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.$$
 
     A $100(1-\alpha)\%$ CI for $\mu^*$ is given by
+    $$\hat{\mu}^* \pm t_{n-2, \alpha/2} s \sqrt{\frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.$$
 
-    $$
-    \hat{\mu}^* \pm t_{n-2, \alpha/2} s \sqrt{\frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.
-    $$
+    A $100(1-\alpha)\%$ _prediction interval_ (PI) for $Y^*$ is given by
+    $$\hat{Y}^* \pm t_{n-2, \alpha/2} s \sqrt{1 + \frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.$$
 
-    A $100(1-\alpha)$% _prediction interval_ (PI) for $Y^*$ is given by
-
-    $$
-    \hat{Y}^* \pm t_{n-2, \alpha/2} s \sqrt{1 + \frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.
-    $$
-
-    However, a $100(1-\alpha)$% PI for $Y^*$ is wider than a CI for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
+    However, a $100(1-\alpha)\%$ PI for $Y^*$ is wider than a CI for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
     """
             ),
             "Implementation": mo.md(rf"""
@@ -1081,8 +1037,8 @@ def _(alt, dataclass, get_source, linreg, mo, pl):
         df: pl.dataframe, x_title: str = "x", y_title: str = "y"
     ) -> linregChartResult:
         """
-        Draw chars related to diagnostics of simple linear regression.
-        Also returns LS fit parameters.
+        Draw charts related to diagnostics of simple linear regression.
+        Also returns LS fit statistics.
 
         input:
         - df: polars dataframe. assumes existence of "x" and "y" columns.
@@ -1091,7 +1047,7 @@ def _(alt, dataclass, get_source, linreg, mo, pl):
         output: A linregChartResult object having fields:
         - chart_ls: chart showing the LS regression line with data points
         - chart_err: chart showing the fit residuals.
-        - β0, β1 ...: LS fit parameters returned by `linreg()`
+        - β0, β1 ...: LS fit statistics returned by `linreg()`
         """
         r = df.select(linreg(pl.col("x"), pl.col("y"))).item()
         r = linregChartResult(**r)
@@ -1238,24 +1194,18 @@ def _(alt, df_ex, mo, pl):
 
     Because $p(x) \to 0$ as $\textrm{h3} \to 0$, it's appropriate to assume $\beta_0 = 0$ and use _regression through the origin_ (Exercise 8) to calculate """
         rf"""
-
-    $$
-    \hat{{\beta}}_1 = {_β1:.4f} \approx  \log_{{10}}e = 0.4343.
-    $$
+    $$\hat{{\beta}}_1 = {_β1:.4f} \approx \log_{{10}}e = 0.4343.$$
     ///
     """
         r"""
     /// details | (c) Explain how the relationship found in (b) roughly translates into the _prime number theorem_: For large $x$, $p(x) \approx 1 / \log_e x$.
 
     For large $x$,
-
-    $$
-    \begin{align*}
+    $$\begin{align*}
     p(x) &= \beta_1 \frac{1}{\log_{10}x} \\
     &\approx \frac{\log_{10}e}{{\log_{10}x}} \\
     &=  \frac{1}{\log_e x}.
-    \end{align*}
-    $$
+    \end{align*}$$
     ///
     """
     )
@@ -1456,10 +1406,7 @@ def _(alt, df_ex, mo, pl):
     mo.md(
         r""" 
     Highschool physics tells us that a planet orbiting the sun at distance $R$ and speed $v$ will have centripetal acceleration $g = v^2/R$, which is provided by gravity $g = GM/R^2$. Therefore 
-
-    $$
-    R = \frac{GM}{v^2}.
-    $$
+    $$R = \frac{GM}{v^2}.$$
 
     So the transformation we are looking for is $h = 1/\textrm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
     """
@@ -1664,23 +1611,72 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(alt, df_ex, linreg, mo, pl):
+    _df = (
+        df_ex(22)
+        .select(
+            "No",
+            x1y1=pl.struct(x="x1", y="y1"),
+            x1y2=pl.struct(x="x1", y="y2"),
+            x1y3=pl.struct(x="x1", y="y3"),
+            x2y4=pl.struct(x="x2", y="y4"),
+        )
+        .unpivot(index="No", variable_name="dataset")
+        .select("dataset", pl.col("value").struct.unnest())
+    )
+
+    _scatter = _df.plot.circle(
+        x=alt.X("x").scale(zero=False, padding=10),
+        y=alt.Y("y").scale(zero=False, padding=10),
+    ).facet(facet="dataset", columns=2)
+
+    _linreg_by_set = _df.group_by("dataset").agg(
+        linreg(pl.col("x"), pl.col("y")).struct.unnest()
+    )
+
     mo.md(
-        r"""
+        rf"""
     /// details | (a) Make four scatter plots: $y_1$ vs. $x_1$, $y_2$ vs. $x_1$, $y_3$ vs. $x_1$, and $y_4$ vs. $x_2$. Comment on their appearances - in particular, the linearity of the relationship exhibited by the plots.
 
+    {mo.as_html(_scatter)}
+
+    - These scatter plots show:
+        - x1y1: some linearity
+        - x1y2: clearly quadratic relationship
+        - x1y3: otherwise strong linearity except for one outlier
+        - x2y4: linearrity questionable, as multiple data points have the same $x$.
     ///
 
     /// details | (b) Fit LS straight lines to the four plots and compute the usual statistics that accompany the LS fits. Note that the numerical results are identical.
+
+    {
+            mo.center(
+                mo.as_html(
+                    _linreg_by_set.style.tab_options(
+                        table_font_size=12,
+                    )
+                    .tab_header(
+                        title="(almost) identical LS fit statistics by dataset"
+                    )
+                    .cols_hide(columns=["n", "se_est_ci", "se_est_pi"])
+                    .cols_align("center")
+                    .tab_stub(rowname_col="dataset")
+                    .tab_stubhead(label="dataset")
+                    .fmt_number(decimals=3)
+                )
+            )
+        }
 
     ///
 
     /// details | (c) Why do you think the LS fits are identical even though the scatter plots are quite different? What does this say about the importance of plotting the data before fitting a model?
 
+    Because each LS fit statistic is only a scalar summary of many data points, a great deal of information is by necessity lost about the actual points layout. This highlights the importance of the scatter plot before fitting, which sometimes reveals unique features of the relationship that evade the fit statistics. 
     ///
 
-    /// details |  (d) What does this say about $r^2$ or the $t$-statistic for testing the significance of $\hat{\beta}_1$ as measures of the linearity of relationships?
+    /// details |  (d) What does this say about $r^2$ or the $t$-statistic for testing the significance of $\hat{{\beta}}_1$ as measures of the linearity of relationships?
 
+    Again, the same $r^2$ or $t$-statistic may correspond to vastly different actual relationships. These "measures of linearity" may not be as concrete as one thinks and therefore should be taken with a grain of salt. Datasets "x1y2" and "x2y4" are good reminders.
     ///
     """
     )
@@ -1722,23 +1718,40 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    /// details | (a) Apply the log transformation to obtain a linear model of the form $y = \beta_0 + \beta_1 w$, where $y = \log{t}$. How are $\beta_0$ and $\beta_1$ related to $a$ and $b$, respectively?
+def _(alt, col, df_ex, linreg_chart, mo, np):
+    _df = df_ex(23).select(col("kg").alias("x"), col("days").log().alias("y"))
+    _scatter = _df.plot.scatter(
+        x=alt.X("x").scale(zero=False, padding=10).title("weight"),
+        y=alt.Y("y").scale(zero=False, padding=10).title("log(gestation time)"),
+    )
+    _r = linreg_chart(_df, x_title="weight", y_title="log(gestation time)")
+    _y = _r.β0 + _r.β1 * 1.2
 
+
+    mo.md(
+        rf"""
+    /// details | (a) Apply the log transformation to obtain a linear model of the form $y = \beta_0 + \beta_1 w$, where $y = \log t$. How are $\beta_0$ and $\beta_1$ related to $a$ and $b$, respectively?
+
+    Apply $\log$ to both sides of the equation $t = a\;b^w$ to get
+    $$\log t = \log a + \log b \cdot w.$$
+    So $\beta_0 = \log a$ and $\beta_1 = \log b$.
     ///
 
     /// details |  (b) Plot log(gestation time) vs. weight. Is this relationship approximately linear?
 
+    {mo.as_html(_scatter)}
+
+    Yes, the relationship is approximately linear.
     ///
 
     /// details | (c) Fit the linear model $y = \beta_0 + \beta_1 w$ to the transformed data.
 
+    {mo.as_html(_r.chart_ls | _r.chart_err)}
     ///
 
     /// details | (d) Using the fitted model in (c), estimate the gestation time of a lion which weighs approximately 1.2 kg at birth.
 
+    $\log t = {_r.β0:.3g} + {_r.β1:.3g} \times 1.2 = {_y:.3g}$. So $t = \exp({_y:.3g}) = {np.exp(_y):.3g}$ days.
     ///
     """
     )
@@ -1778,23 +1791,40 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(alt, col, df_ex, linreg_chart, mo, np):
+    _df = df_ex(24).select(col("l").log().alias("x"), col("h").log().alias("y"))
+    _scatter = _df.plot.scatter(
+        x=alt.X("x").scale(zero=False, padding=10).title("log(days)"),
+        y=alt.Y("y").scale(zero=False, padding=10).title("log(cost)"),
+    )
+    _r = linreg_chart(_df, x_title=("log(days)"), y_title="log(cost)")
+
+    _y = _r.β0 + _r.β1 * np.log(3)
+
     mo.md(
-        r"""
+        rf"""
     /// details | (a) Apply the log transformation to obtain a linear model of the form $y = \beta_0 + \beta_1 x$, where $x = \log l$ and $y = \log h$. How are $\beta_0$ and $\beta_1$ related to $a$ and $b$, respectively?
 
+    Apply $\log$ to both sides of $h = a\,l^b$ to get
+    $$\log h = \log a + b \log l.$$
+    So $\beta_0 = \log a$ and $\beta_1 = b$.
     ///
 
     /// details | (b) Plot $y = \log h$ vs. $x = \log l$. Is this relationship approximately linear?
 
+    {mo.as_html(_scatter)}
+
+    Yes, the relationship is approximately linear.
     ///
 
     /// details |  (c) Fit the linear model $y = \beta_0 + \beta_1 x$ to the transformed data.
 
+    {mo.as_html(_r.chart_ls | _r.chart_err)}
     ///
 
     /// details |  (d) Use the fitted model from (c) to estimate the average reimbursed cost for a 3-day hospital stay by an elderly person.
 
+    $\log h = {_r.β0:.3g} + {_r.β1:.3g} \times \log 3 = {_y:.3g}$. So $h = \exp({_y:.3g}) = {np.exp(_y):.0f}$ dollars.
     ///
     """
     )
@@ -1811,17 +1841,9 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    _Correlation analysis_ assumes that the data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ form a random sample from a _bivariate normal distribution_ with correlation coefficient $\rho$. An estimate of $\rho$ is the sample correlation coefficient $r$. An exact test of $H_0: \rho = 0$ is a $t$-test with $n-2$ d.f. based on the test statistic
+    _Correlation analysis_ assumes that the data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ form a random sample from a _bivariate normal distribution_ with correlation coefficient $\rho$. An estimate of $\rho$ is the sample correlation coefficient $r$. An exact test of $H_0: \rho = 0$ is a $t$-test with $n-2$ d.f. based on the test statistic $$t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}}.$$
 
-    $$
-    t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}}.
-    $$
-
-    This equals $t = \hat{\beta}_1 / \textrm{SE}(\hat{\beta}_1)$ which is used to test $H_0: \beta_1 = 0$ in the related regression model. In other cases only approximate large sample inferences are available. These inferences use the parameterization
-
-    $$
-    \psi = \frac{1}{2}\log_e \left(\frac{1+\rho}{1-\rho}\right).
-    $$
+    This equals $t = \hat{\beta}_1 / \textrm{SE}(\hat{\beta}_1)$ which is used to test $H_0: \beta_1 = 0$ in the related regression model. In other cases only approximate large sample inferences are available. These inferences use the parameterization $$\psi = \frac{1}{2}\log_e \left(\frac{1+\rho}{1-\rho}\right).$$
 
     The sample estimate $\hat{\psi}$ of $\psi$, obtained by substituting $\hat{\rho} = r$ in the above expression, is approximately normally distributed with mean=$\frac{1}{2}\log_e (\frac{1+\rho}{1-\rho})$ and variance=$\frac{1}{n-3}$.
     """
@@ -1959,11 +1981,7 @@ def _(mo):
         r"""
     ### Ex 10.33
 
-    Show that
-
-    $$
-    \sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) = 0.
-    $$
+    Show that$$\sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) = 0.$$
 
     (_Hint_: Substitute $\hat{y}_i = \beta_0 + \beta_1 x_i = \bar{y} + \hat{\beta}_1 (x_i - \bar{x})$ and simplify.)
     """
