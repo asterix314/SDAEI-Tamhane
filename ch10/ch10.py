@@ -18,6 +18,7 @@ def _():
     import altair as alt
     from scipy import stats
     from great_tables import GT, md, html
+    from dataclasses import dataclass
 
     import inspect
 
@@ -35,7 +36,7 @@ def _():
         fname = f"../SDAEI-Tamhane/ch10/Ex10-{n}.json"
         # print(f'loading exercise data from "{fname}"')
         return pl.read_json(fname).explode(pl.all())
-    return alt, df_ex, get_source, html, md, mo, np, pl, stats
+    return alt, dataclass, df_ex, get_source, html, md, mo, np, pl, stats
 
 
 @app.cell(hide_code=True)
@@ -1059,31 +1060,51 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, get_source, linreg, mo, pl):
-    def charts_linreg(
+def _(alt, dataclass, get_source, linreg, mo, pl):
+    @dataclass
+    class linregChartResult:
+        n: int | None = None
+        β0: float | None = None
+        β1: float | None = None
+        r2: float | None = None
+        s2: float | None = None
+        f: float | None = None
+        se_β0: float | None = None
+        se_β1: float | None = None
+        se_est_ci: float | None = None
+        se_est_pi: float | None = None
+        chart_ls: alt.Chart | None = None
+        chart_err: alt.Chart | None = None
+
+
+    def linreg_chart(
         df: pl.dataframe, x_title: str = "x", y_title: str = "y"
-    ) -> tuple[alt.Chart, alt.Chart]:
+    ) -> linregChartResult:
         """
-        draw chars related to diagnostics of simple linear regression.
+        Draw chars related to diagnostics of simple linear regression.
+        Also returns LS fit parameters.
 
         input:
         - df: polars dataframe. assumes existence of "x" and "y" columns.
         - x/y_title: the axis titles to display
 
-        output:
-        - chart showing the LS regression line with data points
-        - residual chart.
+        output: A linregChartResult object having fields:
+        - chart_ls: chart showing the LS regression line with data points
+        - chart_err: chart showing the fit residuals.
+        - β0, β1 ...: LS fit parameters returned by `linreg()`
         """
-        res = df.select(linreg(pl.col("x"), pl.col("y"))).item()
-        β0, β1 = res["β0"], res["β1"]
+        r = df.select(linreg(pl.col("x"), pl.col("y"))).item()
+        r = linregChartResult(**r)
         scatter = df.plot.scatter(
             x=alt.X("x").title(x_title).scale(zero=False, padding=10),
             y=alt.Y("y").title(y_title).scale(zero=False, padding=10),
-        ).properties(title=f"LS fit:  β0 = {β0:.3g}, β1 = {β1:.3g}")
-        ls_line = scatter.transform_regression("x", "y").mark_line(color="red")
-        chart_regress = scatter + ls_line
+        ).properties(title=f"LS fit:  β0 = {r.β0:.3g}, β1 = {r.β1:.3g}")
+        line = scatter.transform_regression("x", "y").mark_line(color="red")
+        r.chart_ls = scatter + line
 
-        error_df = df.with_columns(e=pl.col("y") - (β0 + β1 * pl.col("x")), y0=0)
+        error_df = df.with_columns(
+            e=pl.col("y") - (r.β0 + r.β1 * pl.col("x")), y0=0
+        )
         error = error_df.plot.circle(
             x=alt.X("x")
             .title(x_title)
@@ -1093,9 +1114,9 @@ def _(alt, get_source, linreg, mo, pl):
         ).properties(title="residuals")
         fill = error_df.plot.rule(x="x", y="y0", y2="e", size=alt.value(0.2))
         axis = error_df.plot.rule(y="y0")
-        chart_error = error + fill + axis
+        r.chart_err = error + fill + axis
 
-        return (chart_regress, chart_error)
+        return r
 
 
     mo.ui.tabs(
@@ -1108,11 +1129,11 @@ def _(alt, get_source, linreg, mo, pl):
                 f"""
     Here we define a helper function to draw the diagnostic charts.
 
-    {get_source(charts_linreg)}"""
+    {get_source(linreg_chart)}"""
             ),
         }
     )
-    return (charts_linreg,)
+    return (linreg_chart,)
 
 
 @app.cell(hide_code=True)
@@ -1487,27 +1508,22 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(charts_linreg, df_ex, linreg, mo, pl, stats):
+def _(df_ex, linreg_chart, mo, pl, stats):
     _df = df_ex(20)
-    _res = _df.select(linreg(pl.col("x"), pl.col("y"))).item()
-    _β0, _β1, _f, _n = _res["β0"], _res["β1"], _res["f"], _res["n"]
-    _pval = stats.f.sf(_f, 1, _n - 2)
-
-    chart_ls, chart_error = charts_linreg(
-        _df, x_title="speed", y_title="stop distance"
-    )
+    _r = linreg_chart(_df, x_title="speed", y_title="stop distance")
+    _pval = stats.f.sf(_r.f, 1, _r.n - 2)
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (a) Fit an LS straight line to these data. Plot the residuals against the speed.
 
-    {mo.as_html(chart_ls | chart_error)}
+    {mo.as_html(_r.chart_ls | _r.chart_err)}
     ///
 
     /// details | (b) Comment on the goodness of the fit based on the overall $F$-statistic and the residual plot. Which two assumptions of the linear regression model seem to be violated?
 
-    The $F$-statistic is {_f:.2f} with $P$-value = {_pval:.2e}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
+    The $F$-statistic is {_r.f:.2f} with $P$-value = {_pval:.2e}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
     ///
 
     /// details | (c) Based on the residual plot, what transformation of stopping distance should be used to linearize the relationship with respect to speed? A clue to find this transformation is provided by the following engineering argument: In bringing a car to a stop, its kinetic energy is dissipated as its braking energy, and the two are roughly equal. The kinetic energy is proportional to the square of the car's speed, while the braking energy is proportional to the stopping distance, assuming a constant braking force.
@@ -1519,25 +1535,20 @@ def _(charts_linreg, df_ex, linreg, mo, pl, stats):
     )
 
     _df = _df.with_columns(pl.col("y").sqrt())
-    _res = _df.select(linreg(pl.col("x"), pl.col("y"))).item()
-    _β0, _β1, _f, _n = _res["β0"], _res["β1"], _res["f"], _res["n"]
-    _pval = stats.f.sf(_f, 1, _n - 2)
-
-    chart_ls, chart_error = charts_linreg(
-        _df, x_title="speed", y_title="√distance"
-    )
-    _y = (_β0 + _β1 * 40) ** 2
+    _r = linreg_chart(_df, x_title="speed", y_title="√distance")
+    _pval = stats.f.sf(_r.f, 1, _r.n - 2)
+    _y = (_r.β0 + _r.β1 * 40) ** 2
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (d) Make this linearizing transformation and check the goodness of fit. What is the predicted stopping distance according to this model if the car is traveling at 40 mph?
 
-    {mo.as_html(chart_ls | chart_error)}
+    {mo.as_html(_r.chart_ls | _r.chart_err)}
 
-    The $F$-statistic is {_f:.2f} with $P$-value = {_pval:.2e}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
+    The $F$-statistic is {_r.f:.2f} with $P$-value = {_pval:.2e}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
 
-    The stopping distance of a car traveling at 40 mph would be $y = h^2 = ({_β0:.2f} +  {_β1:.2f} \cdot 40)^2$ = {_y:.2f} feet.
+    The stopping distance of a car traveling at 40 mph would be $y = h^2 = ({_r.β0:.2f} +  {_r.β1:.2f} \cdot 40)^2$ = {_y:.2f} feet.
     ///
     """
         )
@@ -1581,19 +1592,39 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(df_ex, linreg_chart, mo, pl):
+    _df = df_ex(21)
+    _scatter = _df.plot.scatter(x="mph", y="amps")
+    _r = linreg_chart(
+        _df.select(pl.col("mph").alias("x"), (pl.col("amps") ** 3).alias("y")),
+        x_title="mph",
+        y_title="amps^3",
+    )
+
+    _y = _r.β0 + _r.β1 * 8
+
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the DC output vs. wind velocity. Describe the relationship. Refer to Figure 10.10. Find a transformation that linearizes the relationship. Fit the LS line.
+
+    {mo.as_html(_scatter)}
+
+    The scatter plot shows that the DC output increases with the wind velocity, but the increase gradually peters out. Let's take the transformation $y \to y^3$ and fit the LS line.
+
+    {mo.as_html(_r.chart_ls)}
 
     ///
 
     ///details | (b) Check the goodness of fit by making residual plots. Do the assumptions of linear regression seem to be satisfied?
 
+    {mo.as_html(_r.chart_err)}
+
+    The $F$-statistic = {_r.f:.3f} indicating there's a significant linear relationship, and the residual plot appears to be normal. So yes, the assumptions of linear regression are satisfied.
     ///
 
     /// details | (c) What is the predicted output if the wind velocity is 8 mph?
 
+    According to this model, the DC output at wind velocity = 8 mph would be {_y ** (1 / 3):.3f} amps. 
     ///
     """
     )
