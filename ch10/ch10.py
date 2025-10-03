@@ -66,6 +66,89 @@ def _(mo):
     return
 
 
+@app.cell
+def _(alt, col, mo, pl):
+    class Regression:
+        def __init__(self, exnum: int, predictor: str, response: str) -> None:
+            from pathlib import Path
+
+            datafile = Path(f"../SDAEI-Tamhane/ch10/Ex10-{exnum}.json")
+            self.df = pl.read_json(datafile).explode(pl.all())
+
+            parse = lambda s: s.split(":") if ":" in s else [s] * 2
+            self._x_name, self._x_title = parse(predictor)
+            self._y_name, self._y_title = parse(response)
+            stats = self.df.select(
+                linreg(col(self._x_name), col(self._y_name))
+            ).item()
+            vars(self).update(stats)
+
+        def predict(self, x: float) -> float:
+            return self.β0 + self.β1 * x
+
+    
+        def chart_scatter(self) -> alt.Chart:
+            chart = self.df.plot.scatter(
+                x=alt.X(self._x_name)
+                .title(self._x_title)
+                .scale(zero=False, padding=10),
+                y=alt.Y(self._y_name)
+                .title(self._y_title)
+                .scale(zero=False, padding=10),
+            )
+            return chart
+
+        def chart_lr(self, color: str = "red") -> alt.Chart:
+            scatter = self.chart_scatter()
+            line = scatter.transform_regression(
+                self._x_name, self._y_name
+            ).mark_line(color=color)
+            title = f"LS fit: {self._y_title} = {self.β0:.3g} {'-' if self.β1 < 0 else '+'} {abs(self.β1):.3g}×{self._x_title}"
+            return (scatter + line).properties(title=title)
+
+        @staticmethod
+        def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
+            """
+            Gives results of simple linear regression and estimation
+            by directly translating textbook formulas to polars expressions.
+
+            Input:
+                - x, y: observations
+
+            Output: a pl.struct of
+                - β0/1: intercept/slope of regression line
+                - r2: coefficient of determination
+                - s2: mean square error estimate of σ^2
+                - f: F statistic of H0: β1 = 0. f=t^2
+                - se_β0/1: standard error of β0/1
+            """
+            n = x.len()
+            sxx = ((x - x.mean()) ** 2).sum()
+            syy = ((y - y.mean()) ** 2).sum()
+            sxy = ((x - x.mean()) * (y - y.mean())).sum()
+            β1 = sxy / sxx
+            β0 = y.mean() - x.mean() * β1
+            r2 = sxy**2 / (sxx * syy)
+            s2 = (syy - β1**2 * sxx) / (n - 2)
+            f = β1**2 * sxx / s2
+            se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
+            se_β1 = (s2 / sxx).sqrt()
+            return pl.struct(
+                n.alias("n"),
+                β0.alias("β0"),
+                β1.alias("β1"),
+                r2.alias("r2"),
+                s2.alias("s2"),
+                f.alias("f"),
+                se_β0.alias("se_β0"),
+                se_β1.alias("se_β1"),
+            )
+
+
+    mo.show_code()
+    return (Regression,)
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -285,44 +368,33 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, pl):
-    _df = df_ex(4)
-    _res = _df.select(linreg(pl.col("LAST"), pl.col("NEXT"))).item()
-    _β0, _β1, _r2, _s2 = _res["β0"], _res["β1"], _res["r2"], _res["s2"]
-
-    _scatter = _df.plot.scatter(
-        alt.X("LAST").scale(domain=[1, 5.5]),
-        alt.Y("NEXT").scale(domain=[30, 100]),
-    )
-
-    _line = _scatter.transform_regression("LAST", "NEXT").mark_line(color="red")
-
+def _(Regression, mo, np):
+    _r = Regression(exnum=4, predictor="LAST", response="NEXT")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
 
-    {mo.ui.altair_chart(_scatter)}
+    {mo.as_html(_r.chart_scatter())}
 
     Yes, the points appear approximately linear.
     ///
 
     /// details | (b) Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
 
-    When applied to the dataset, `linreg` gives $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.2f}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about
-    $\beta_0 + \beta_1 \cdot 3$ = {_β0:.2f} + {_β1:.2f} × 3 = {_β0 + _β1 * 3:.2f} minutes.
+    {mo.as_html(_r.chart_lr())}
 
-    {mo.as_html(_scatter + _line)}
+    The fit result is that $\beta_0$ = {_r.β0:.3g} and $\beta_1$ = {_r.β1:.3g}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about {_r.β0:.3g} + {_r.β1:.3g} × 3 = {_r.predict(3):.3g} minutes.
     ///
 
     /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
 
-    $r^2$ = {_r2:.2f}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
+    $r^2$ = {_r.r2:.3g}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
     ///
 
     /// details | (d) Calculate the mean square error estimate of $\sigma$.
 
-    $s^2$ = {_s2:.2f}, and the mean square error estimate of $\sigma$ is $s$ = {_s2**0.5:.2f}.
+    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
     ///
 
                 """
@@ -366,38 +438,31 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, pl):
-    _df = df_ex(5)
-    _res = _df.select(linreg(pl.col("Year"), pl.col("Distance"))).item()
-    _β0, _β1, _r2, _s2 = _res["β0"], _res["β1"], _res["r2"], _res["s2"]
+def _(Regression, mo, np):
+    _r = Regression(exnum=5, predictor="Year", response="Distance")
 
-    _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
-        alt.X("Year:T"),
-        alt.Y("Distance").scale(domain=[13, 19]),
-    )
-    _line = _scatter.transform_regression("Year", "Distance").mark_line(
-        color="red"
-    )
+    # _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
+    #     alt.X("Year:T"),
+    #     alt.Y("Distance").scale(domain=[13, 19]),
+    # )
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the length of the jump by year. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_scatter)}
+    {mo.as_html(_r.chart_scatter())}
 
     Yes, the points appear approximately linear.
     ///
 
     /// details |  (b) Fit a least squares regression line.
 
-    Using `linreg`, $\beta_0$ = {_β0:.2f} and $\beta_1$ = {_β1:.3f}.
-
-    {mo.ui.altair_chart(_line + _scatter)}
+    {mo.as_html(_r.chart_lr())}
     ///
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    $s^2$ = {_s2:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_s2**0.5:.3f}.
+    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
     ///
     """
     )
@@ -436,39 +501,28 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, pl):
-    _df = df_ex(6)
-    _res = _df.select(linreg(pl.col("Pressure"), pl.col("Temp"))).item()
-
-    _scatter = _df.plot.scatter(
-        alt.X("Pressure").scale(domain=[20, 31]),
-        alt.Y("Temp").scale(domain=[192, 215]),
-    )
-
-    _line = _scatter.transform_regression("Pressure", "Temp").mark_line(
-        color="red"
-    )
+def _(Regression, mo, np):
+    _r = Regression(exnum=6, predictor="Pressure", response="Temp")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the boiling point by barometric pressure. Does the relationship appear to be approximately linear?
 
-    {mo.ui.altair_chart(_scatter)}
+    {mo.as_html(_r.chart_scatter())}
 
     Yes, the relationship is approximately linear.
     ///
 
     /// details | (b) Fit a least squares regression line. What proportion of variation in the boiling point is accounted for by linear regression on the barometric pressure?
 
-    Using `linreg`, $\beta_0$ = {_res["β0"]:.2f}, $\beta_1$ = {_res["β1"]:.3f}, and $r^2$ = {_res["r2"]:.3f}. That is, {_res["r2"] * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
+    {mo.as_html(_r.chart_lr())}
 
-    {mo.ui.altair_chart(_line + _scatter)}
+    $r^2$ = {_r.r2:.3g}. That is, {_r.r2 * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
     ///
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    Also using the `linreg` function, $s^2$ = {_res["s2"]:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res["s2"] ** 0.5:.3f}.
-
+    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
     ///"""
     )
     return
@@ -509,38 +563,26 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, pl):
-    _df = df_ex(7)
-    _res = _df.select(linreg(pl.col("Year"), pl.col("Time"))).item()
-
-    _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
-        alt.X("Year:T"),
-        alt.Y("Time").scale(domain=[55, 90]),
-    )
-
-    _line = _scatter.transform_regression(
-        "Year", "Time"
-    ).mark_line(color="red")
+def _(Regression, mo, np):
+    _r = Regression(exnum=7, predictor="Year", response="Time")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the winning times by year. Does the relationship appear to be approximately linear?
 
-    {mo.ui.altair_chart(_scatter)}
+    {mo.as_html(_r.chart_scatter())}
 
     Yes, the relationship is approximately linear.
     ///
 
     /// details | (b) Fit a least squares regression line.
 
-    Using `linreg`, $\beta_0$ = {_res['β0']:.1f} and $\beta_1$ = {_res['β1']:.3f}.
-
-    {mo.ui.altair_chart(_line + _scatter)}
+    {mo.as_html(_r.chart_lr())}
     ///
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    Also using the `linreg` function, $s^2$ = {_res["s2"]:.3f}, and the mean square error estimate of $\sigma$ is $s$ = {_res["s2"] ** 0.5:.3f}.
+    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
     ///
     """
     )
