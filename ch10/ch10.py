@@ -48,10 +48,8 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.ui.tabs(
-        {
-            "Theory": mo.md(
-                r"""
+    mo.md(
+        r"""
     _Linear regression analysis_ begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The linear regression model
     $$Y_i = \beta_0 + \beta_1 x_i + \epsilon_i\ (i=1,2, \ldots, n)$$
     has these basic assumptions:
@@ -60,93 +58,8 @@ def _(mo):
     2. The mean of $Y_i$ is a linear function of $x_i$.
     3. The errors $\epsilon_i$ are i.i.d. normal.
     """
-            )
-        }
     )
     return
-
-
-@app.cell
-def _(alt, col, mo, pl):
-    class Regression:
-        def __init__(self, exnum: int, predictor: str, response: str) -> None:
-            from pathlib import Path
-
-            datafile = Path(f"../SDAEI-Tamhane/ch10/Ex10-{exnum}.json")
-            self.df = pl.read_json(datafile).explode(pl.all())
-
-            parse = lambda s: s.split(":") if ":" in s else [s] * 2
-            self._x_name, self._x_title = parse(predictor)
-            self._y_name, self._y_title = parse(response)
-            stats = self.df.select(
-                linreg(col(self._x_name), col(self._y_name))
-            ).item()
-            vars(self).update(stats)
-
-        def predict(self, x: float) -> float:
-            return self.β0 + self.β1 * x
-
-    
-        def chart_scatter(self) -> alt.Chart:
-            chart = self.df.plot.scatter(
-                x=alt.X(self._x_name)
-                .title(self._x_title)
-                .scale(zero=False, padding=10),
-                y=alt.Y(self._y_name)
-                .title(self._y_title)
-                .scale(zero=False, padding=10),
-            )
-            return chart
-
-        def chart_lr(self, color: str = "red") -> alt.Chart:
-            scatter = self.chart_scatter()
-            line = scatter.transform_regression(
-                self._x_name, self._y_name
-            ).mark_line(color=color)
-            title = f"LS fit: {self._y_title} = {self.β0:.3g} {'-' if self.β1 < 0 else '+'} {abs(self.β1):.3g}×{self._x_title}"
-            return (scatter + line).properties(title=title)
-
-        @staticmethod
-        def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
-            """
-            Gives results of simple linear regression and estimation
-            by directly translating textbook formulas to polars expressions.
-
-            Input:
-                - x, y: observations
-
-            Output: a pl.struct of
-                - β0/1: intercept/slope of regression line
-                - r2: coefficient of determination
-                - s2: mean square error estimate of σ^2
-                - f: F statistic of H0: β1 = 0. f=t^2
-                - se_β0/1: standard error of β0/1
-            """
-            n = x.len()
-            sxx = ((x - x.mean()) ** 2).sum()
-            syy = ((y - y.mean()) ** 2).sum()
-            sxy = ((x - x.mean()) * (y - y.mean())).sum()
-            β1 = sxy / sxx
-            β0 = y.mean() - x.mean() * β1
-            r2 = sxy**2 / (sxx * syy)
-            s2 = (syy - β1**2 * sxx) / (n - 2)
-            f = β1**2 * sxx / s2
-            se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
-            se_β1 = (s2 / sxx).sqrt()
-            return pl.struct(
-                n.alias("n"),
-                β0.alias("β0"),
-                β1.alias("β1"),
-                r2.alias("r2"),
-                s2.alias("s2"),
-                f.alias("f"),
-                se_β0.alias("se_β0"),
-                se_β1.alias("se_β1"),
-            )
-
-
-    mo.show_code()
-    return (Regression,)
 
 
 @app.cell(hide_code=True)
@@ -249,7 +162,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(get_source, mo, pl):
+def _(mo, pl):
     def linreg(x: pl.Expr, y: pl.Expr, x_star: float | None = None) -> pl.Expr:
         """
         Gives results of simple linear regression and estimation
@@ -294,10 +207,8 @@ def _(get_source, mo, pl):
         )
 
 
-    mo.ui.tabs(
-        {
-            "Theory": mo.md(
-                r"""
+    mo.md(
+        r"""
     The _least squares(LS) estimates_ $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
     $$\begin{align*}
     \hat{\beta}_1 &= \frac{S_{xy}}{S_{xx}}, \\
@@ -311,17 +222,102 @@ def _(get_source, mo, pl):
 
     The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f.
     """
-            ),
-            "Implementation": mo.md(rf"""
-    The `scipy` function [`stats.linregress`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.linregress.html) can be used to get many results of a simple linear regression.
-
-    The `linreg` function of polars expressions defined below follows directly from the formulas in the book, yielding $\beta_0$ and $\beta_1$ among others. We'll use this homemade function for the exercises.
-
-    {get_source(linreg)}
-    """),
-        }
     )
     return (linreg,)
+
+
+@app.cell(hide_code=True)
+def _(alt, col, mo, pl):
+    class Regression:
+        def __init__(self, exnum: int, predictor: str, response: str) -> None:
+            from pathlib import Path
+
+            datafile = Path(f"../SDAEI-Tamhane/ch10/Ex10-{exnum}.json")
+            self.df = pl.read_json(datafile).explode(pl.all())
+
+            parse = lambda s: s.split(":") if ":" in s else [s] * 2
+            self._x_name, self._x_title = parse(predictor)
+            self._y_name, self._y_title = parse(response)
+            stats = self.df.select(
+                self.linreg(col(self._x_name), col(self._y_name))
+            ).item()
+            vars(self).update(stats)
+
+        def predict(
+            self, *, x: float | None = None, y: float | None = None
+        ) -> float:
+            if y is None:
+                return self.β0 + self.β1 * x
+            else:  # inverse regression
+                return (y - self.β0) / self.β1
+
+        def chart_scatter(self) -> alt.Chart:
+            chart = self.df.plot.scatter(
+                x=alt.X(self._x_name)
+                .title(self._x_title)
+                .scale(zero=False, padding=10),
+                y=alt.Y(self._y_name)
+                .title(self._y_title)
+                .scale(zero=False, padding=10),
+            )
+            return chart
+
+        def chart_lr(self, color: str = "red") -> alt.Chart:
+            scatter = self.chart_scatter()
+            line = scatter.transform_regression(
+                self._x_name, self._y_name
+            ).mark_line(color=color)
+            title = f"LS fit: {self._y_title} = {self.β0:.3g} {'-' if self.β1 < 0 else '+'} {abs(self.β1):.3g}×{self._x_title}"
+            return (scatter + line).properties(title=title)
+
+        @staticmethod
+        def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
+            """
+            Gives various linear regression statistics by directly
+            translating textbook formulas to polars expressions.
+
+            Input:
+                - x, y: observations
+
+            Output: a pl.struct of
+                - n: number of data points
+                - xmean: mean of x
+                - sxx: sum of squares of x
+                - β0/1: intercept/slope of regression line
+                - r2: coefficient of determination
+                - s2: mean square error estimate of σ^2
+                - f: F statistic of H0: β1 = 0. f=t^2
+                - se_β0/1: standard error of β0/1
+            """
+            n = x.len()
+            xmean = x.mean()
+            ymean = y.mean()
+            sxx = ((x - xmean) ** 2).sum()
+            syy = ((y - ymean) ** 2).sum()
+            sxy = ((x - xmean) * (y - ymean)).sum()
+            β1 = sxy / sxx
+            β0 = ymean - xmean * β1
+            r2 = sxy**2 / (sxx * syy)
+            s2 = (syy - β1**2 * sxx) / (n - 2)
+            f = β1**2 * sxx / s2
+            se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
+            se_β1 = (s2 / sxx).sqrt()
+            return pl.struct(
+                n.alias("n"),
+                xmean.alias("xmean"),
+                sxx.alias("sxx"),
+                β0.alias("β0"),
+                β1.alias("β1"),
+                r2.alias("r2"),
+                s2.alias("s2"),
+                f.alias("f"),
+                se_β0.alias("se_β0"),
+                se_β1.alias("se_β1"),
+            )
+
+
+    mo.show_code()
+    return (Regression,)
 
 
 @app.cell(hide_code=True)
@@ -384,7 +380,7 @@ def _(Regression, mo, np):
 
     {mo.as_html(_r.chart_lr())}
 
-    The fit result is that $\beta_0$ = {_r.β0:.3g} and $\beta_1$ = {_r.β1:.3g}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about {_r.β0:.3g} + {_r.β1:.3g} × 3 = {_r.predict(3):.3g} minutes.
+    The fit result is that $\beta_0$ = {_r.β0:.3g} and $\beta_1$ = {_r.β1:.3g}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about {_r.β0:.3g} + {_r.β1:.3g} × 3 = {_r.predict(x=3):.3g} minutes.
     ///
 
     /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
@@ -627,76 +623,9 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(get_source, linreg, mo, pl, stats):
-    def slope_test(
-        df: pl.DataFrame,
-        x: str,
-        y: str,
-        b: float = 0,
-        alternative: str = "two-sided",
-    ) -> tuple[float, float]:
-        """
-        returns (t-statistic, P-value) of observed data under H0: beta_1 = b
-
-        input:
-        - df: the dataset (polars dataframe)
-        - x, y: column names for observations
-        - b: given constant to compare with beta_1. defaults to 0
-        - alternative:
-            'two-sided': beta_1 ≠ b which is the default
-            'less': beta_1 < b
-            'greater': beta_1 > b
-
-        output:
-        a tuple (t, pval) containing the t-statisic and the P-value
-        """
-        res = df.select(linreg(pl.col(x), pl.col(y))).item()
-        t = (res["β1"] - b) / res["se_β1"]
-        n = res["n"]
-        match alternative:
-            case "two-sided":
-                pval = 2 * stats.t.sf(abs(t), n - 2).item()
-            case "greater":
-                pval = stats.t.sf(t, n - 2).item()
-            case "less":
-                pval = stats.t.cdf(t, n - 2).item()
-            case _:
-                raise ValueError("unknown alternative value.")
-        return (t, pval)
-
-
-    def estimate_interval(
-        df: pl.DataFrame,
-        x: str,
-        y: str,
-        x_star: float,
-        PI: bool = False,
-        α: float = 0.05,
-    ) -> list[float]:
-        """
-        Gives the confidence/prediction interval for estimation.
-
-        Input:
-        - df: the dataset (polars dataframe)
-        - x, y: column names for observations
-        - x_star: input point for estimation
-        - PI: defaults to False (calculate a CI)
-        - α: significance level
-
-        Output:
-        the list [low, high] designating the calculated interval.
-        """
-        res = df.select(linreg(pl.col(x), pl.col(y), x_star=x_star)).item()
-        y_star = res["β0"] + res["β1"] * x_star
-        t_crit = stats.t.ppf(1 - α / 2, res["n"] - 2).item()  # critical value
-        se = res["se_est_pi"] if PI else res["se_est_ci"]
-        return [y_star - t_crit * se, y_star + t_crit * se]
-
-
-    mo.ui.tabs(
-        {
-            "Theory": mo.md(
-                r"""
+def _(mo):
+    mo.md(
+        r"""
     The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
     $$\mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad
     \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.$$
@@ -714,21 +643,83 @@ def _(get_source, linreg, mo, pl, stats):
 
     However, a $100(1-\alpha)\%$ PI for $Y^*$ is wider than a CI for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
     """
-            ),
-            "Implementation": mo.md(rf"""
-    The `scipy` function [`stats.linregress`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.linregress.html) can also be used to test if $\beta_1 = 0$.
-
-    Here we define a more general `slope_test` to test if $\beta_1$ is differenct than a given slope.
-
-    {get_source(slope_test)}
-
-    We also define a function `estimate_interval` to calculate the CI/PI for estimation.
-
-    {get_source(estimate_interval)}
-        """),
-        }
     )
-    return estimate_interval, slope_test
+    return
+
+
+@app.cell(hide_code=True)
+def _(Regression, mo, np, stats):
+    from typing import NamedTuple
+
+
+    class regressionInference(Regression):
+        class slopeTestResult(NamedTuple):
+            pval: float
+            t: float
+
+        def slopeTest(
+            self, k: float = 0, alternative: str = "two-sided"
+        ) -> slopeTestResult:
+            """
+            returns (P-value, t-statistic) of observed data under H0: β1 = k
+
+            input:
+                - k: given constant to compare with β1. defaults to 0
+                - alternative:
+                    'two-sided': β1 ≠ k which is the default
+                    'less': β1 < k
+                    'greater': β1 > k
+
+            output:
+                a slopeTestResult object containing the P-value and the t-statisic.
+            """
+            t = (self.β1 - k) / self.se_β1
+            match alternative:
+                case "two-sided":
+                    pval = 2 * stats.t.sf(abs(t), self.n - 2)
+                case "greater":
+                    pval = stats.t.sf(t, self.n - 2)
+                case "less":
+                    pval = stats.t.cdf(t, self.n - 2)
+                case _:
+                    raise ValueError("unknown alternative value.")
+            return self.slopeTestResult(pval=pval, t=t)
+
+        def estimateInterval(
+            self,
+            x: float,
+            kind: str = "CI",
+            α: float = 0.05,
+        ) -> list[float]:
+            """
+            Gives the confidence/prediction interval.
+
+            Input:
+                - x: input point for estimation
+                - kind: "CI" or "PI"
+                - α: significance level, defaults to 0.05
+
+            Output:
+                the confidence/prediction interval [low, high].
+            """
+            y = self.predict(x=x)
+            t_crit = stats.t.ppf(1 - α / 2, self.n - 2)  # critical value
+            if kind == "CI":
+                se = np.sqrt(
+                    self.s2 * (1 / self.n + (x - self.xmean) ** 2 / self.sxx)
+                )
+            elif kind == "PI":
+                se = np.sqrt(
+                    self.s2 * (1 + 1 / self.n + (x - self.xmean) ** 2 / self.sxx)
+                )
+            else:
+                raise ValueError("Unkown interval kind")
+
+            return [y - t_crit * se, y + t_crit * se]
+
+
+    mo.show_code()
+    return (regressionInference,)
 
 
 @app.cell(hide_code=True)
@@ -744,23 +735,21 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, estimate_interval, mo, slope_test):
-    _df = df_ex(5)
-
-    _t, _pval = slope_test(_df, "Year", "Distance")
-
-    [_low, _high] = estimate_interval(_df, "Year", "Distance", 2004, PI=True)
+def _(mo, regressionInference):
+    _r = regressionInference(exnum=5, predictor="Year", response="Distance")
+    _pval, _t = _r.slopeTest(alternative="greater")
+    [_l, _h] = _r.estimateInterval(2004, kind="PI")
 
     mo.md(
         rf"""
     /// details | (a) Is there a significant increasing linear trend in the triple jump distance? Test at $\alpha = .05$.
 
-    This is a test of $H_0: \beta_1 \le 0$ and the $t$-statistic is {_t:.2f} with a one-sided $P$-value of {_pval:.2e} < $\alpha$. So yes there is a significant increasing trend.
+    This is a test of $H_0: \beta_1 \le 0$ and the $t$-statistic is {_t:.3g} with a one-sided $P$-value of {_pval:.3g} < $\alpha$. So yes there is a significant increasing trend.
     ///
 
     /// details | (b) Calculate a 95% PI for the winning jump in 2004. Do you think this prediction is reliable? Why or why not? Would a 95% CI for the winning jump in 2004 have a meaningful interpretation? Explain.
 
-    A 95% PI for the winning jump in 2004 is [{_low:.2f}, {_high:.2f}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
+    A 95% PI for the winning jump in 2004 is [{_l:.3g}, {_h:.3g}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
     ///
     """
     )
@@ -780,28 +769,28 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, estimate_interval, mo):
-    _df = df_ex(6)
-    [_low, _high] = estimate_interval(_df, "Pressure", "Temp", 28)
+def _(mo, regressionInference):
+    _r = regressionInference(exnum=6, predictor="Pressure", response="Temp")
+    [_l, _h] = _r.estimateInterval(28, kind="CI")
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (a) Calculate a 95% CI for the boiling point if the barometric pressure is 28 inches of mercury. Interpret your CI.
 
-    The said CI is calculated to be [{_low:.2f}, {_high:.2f}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
+    The said CI is calculated to be [{_l:.2f}, {_h:.2f}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
     ///"""
         )
     )
 
-    [_low, _high] = estimate_interval(_df, "Pressure", "Temp", 31)
+    [_l, _h] = _r.estimateInterval(31, kind="CI")
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (b) Calculate a 95% CI for the boiling point if the barometric pressure is 31 inches of mercury. Compare this with the CI of (a).
 
-    The said CI is calculated to be [{_low:.2f}, {_high:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
+    The said CI is calculated to be [{_l:.2f}, {_h:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
     /// """
         )
     )
@@ -821,41 +810,40 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, estimate_interval, mo):
-    _df = df_ex(4)
-
-    [_low, _high] = estimate_interval(_df, x="LAST", y="NEXT", x_star=3, PI=True)
+def _(mo, regressionInference):
+    _r = regressionInference(exnum=4, predictor="LAST", response="NEXT")
+    [_l, _h] = _r.estimateInterval(3, kind="PI")
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (a) Calculate a 95% PI for the time to the next eruption if the last eruption lasted 3 minutes.
 
-    The said PI is calculated to be [{_low:.2f}, {_high:.2f}].
+    The said PI is calculated to be [{_l:.2f}, {_h:.2f}].
     ///"""
         )
     )
 
-    [_low, _high] = estimate_interval(_df, x="LAST", y="NEXT", x_star=3, PI=False)
+    [_l, _h] = _r.estimateInterval(3, kind="CI")
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (b) Calculate a 95% CI for the mean time to the next eruption for a last eruption lasting 3 minutes. Compare this CI with the PI obtained in (a).
 
-    The said CI is calculated to be [{_low:.2f}, {_high:.2f}] which is a lot narrower than the PI in (a).
+    The said CI is calculated to be [{_l:.2f}, {_h:.2f}] which is a lot narrower than the PI in (a).
     ///"""
         )
     )
 
-    [_low, _high] = estimate_interval(_df, x="LAST", y="NEXT", x_star=1, PI=True)
+    [_l, _h] = _r.estimateInterval(1, kind="PI")
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (c) Repeat (a) if the last eruption lasted 1 minute. Do you think this prediction is reliable? Why or why not?
 
-    The PI for a 1 minute last eruption is [{_low:.2f}, {_high:.2f}] which is unreliable because we are extrapolating outside of the data domain.
+    The PI for a 1 minute last eruption is [{_l:.2f}, {_h:.2f}] which is unreliable because we are extrapolating outside of the data domain.
     """
         )
     )
@@ -875,20 +863,16 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, estimate_interval, linreg, mo, pl):
-    _df = df_ex(7)
-    [_low, _high] = estimate_interval(_df, "Year", "Time", 2004, PI=True)
-
-
-    _y = 60
-    _res = _df.select(linreg(pl.col("Year"), pl.col("Time"))).item()
-    _x = (_y - _res["β0"]) / _res["β1"]
+def _(mo, regressionInference):
+    _r = regressionInference(exnum=7, predictor="Year", response="Time")
+    [_l, _h] = _r.estimateInterval(2004, kind="PI")
+    _x = _r.predict(y=60)
 
     mo.md(
         rf"""
     /// details | (a) Calculate a 95% PI for the winning time in 2004. Do you think this prediction is reliable? Why or why not?
 
-    The specified PI is calculated to be [{_low:.2f}, {_high:.2f}]. However, this prediction is unreliable because we are extrapolating outside the data range (latest available year was 1996).
+    The specified PI is calculated to be [{_l:.1f}, {_h:.1f}]. However, this prediction is unreliable because we are extrapolating outside the data range (latest available year was 1996).
     ///
 
     /// details | (b) Use the regression equation to find the year in which the winning time would break 1 minute. Given that the Olympics are every four years, during which Olympics would this happen?
