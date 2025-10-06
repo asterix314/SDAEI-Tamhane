@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.16.2"
+__generated_with = "0.16.5"
 app = marimo.App(width="medium")
 
 
@@ -229,30 +229,33 @@ def _(mo, pl):
 @app.cell(hide_code=True)
 def _(alt, col, mo, pl):
     class Regression:
-        def __init__(self, exnum: int, predictor: str, response: str) -> None:
-            from pathlib import Path
-
-            datafile = Path(f"../SDAEI-Tamhane/ch10/Ex10-{exnum}.json")
-            self.df = pl.read_json(datafile).explode(pl.all())
-
-            parse = lambda s: s.split(":") if ":" in s else [s] * 2
-            self._x_name, self._x_title = parse(predictor)
-            self._y_name, self._y_title = parse(response)
+        def _calc(self) -> None:
             stats = self.df.select(
                 self.linreg(col(self._x_name), col(self._y_name))
             ).item()
             vars(self).update(stats)
 
+        def __init__(self, dnum: int, x: str, y: str) -> None:
+            datafile = f"../SDAEI-Tamhane/ch10/Ex10-{dnum}.json"
+            self.df = pl.read_json(datafile).explode(pl.all())
+
+            parse = lambda s: s.split(":") if ":" in s else [s] * 2
+            self._x_name, self._x_title = parse(x)
+            self._y_name, self._y_title = parse(y)
+            self._calc()
+
         def predict(
             self, *, x: float | None = None, y: float | None = None
         ) -> float:
-            if y is None:
+            if y is None and x is not None:
                 return self.β0 + self.β1 * x
-            else:  # inverse regression
+            elif x is None and y is not None:  # inverse regression
                 return (y - self.β0) / self.β1
+            else:
+                raise ValueError("Either x or y should be used.")
 
-        def chart_scatter(self) -> alt.Chart:
-            chart = self.df.plot.scatter(
+        def _chart_scatter(self) -> alt.Chart:
+            return self.df.plot.scatter(
                 x=alt.X(self._x_name)
                 .title(self._x_title)
                 .scale(zero=False, padding=10),
@@ -260,15 +263,25 @@ def _(alt, col, mo, pl):
                 .title(self._y_title)
                 .scale(zero=False, padding=10),
             )
-            return chart
 
-        def chart_lr(self, color: str = "red") -> alt.Chart:
-            scatter = self.chart_scatter()
+        def _chart_regression(self) -> alt.Chart:
+            scatter = self._chart_scatter()
             line = scatter.transform_regression(
                 self._x_name, self._y_name
-            ).mark_line(color=color)
+            ).mark_line(color="red")
             title = f"LS fit: {self._y_title} = {self.β0:.3g} {'-' if self.β1 < 0 else '+'} {abs(self.β1):.3g}×{self._x_title}"
             return (scatter + line).properties(title=title)
+
+        def chart(self, kind: str = "scatter") -> alt.Chart:
+            match kind:
+                case "scatter":
+                    chart = self._chart_scatter()
+                case "regression":
+                    chart = self._chart_regression()
+                case _:
+                    raise ValueError("Unkown chart type")
+
+            return chart
 
         @staticmethod
         def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
@@ -365,20 +378,20 @@ def _(df_ex, html, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(exnum=4, predictor="LAST", response="NEXT")
+    _r = Regression(dnum=4, x="LAST", y="NEXT")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of NEXT vs. LAST. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_r.chart_scatter())}
+    {mo.as_html(_r.chart("scatter"))}
 
     Yes, the points appear approximately linear.
     ///
 
     /// details | (b) Fit a least squares regression line. Use it to predict the time to the next eruption if the last eruption lasted 3 minutes.
 
-    {mo.as_html(_r.chart_lr())}
+    {mo.as_html(_r.chart("regression"))}
 
     The fit result is that $\beta_0$ = {_r.β0:.3g} and $\beta_1$ = {_r.β1:.3g}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about {_r.β0:.3g} + {_r.β1:.3g} × 3 = {_r.predict(x=3):.3g} minutes.
     ///
@@ -435,7 +448,7 @@ def _(df_ex, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(exnum=5, predictor="Year", response="Distance")
+    _r = Regression(dnum=5, x="Year", y="Distance")
 
     # _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
     #     alt.X("Year:T"),
@@ -446,14 +459,14 @@ def _(Regression, mo, np):
         rf"""
     /// details | (a) Make a scatter plot of the length of the jump by year. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_r.chart_scatter())}
+    {mo.as_html(_r.chart("scatter"))}
 
     Yes, the points appear approximately linear.
     ///
 
     /// details |  (b) Fit a least squares regression line.
 
-    {mo.as_html(_r.chart_lr())}
+    {mo.as_html(_r.chart("regression"))}
     ///
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
@@ -498,20 +511,20 @@ def _(df_ex, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(exnum=6, predictor="Pressure", response="Temp")
+    _r = Regression(dnum=6, x="Pressure", y="Temp")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the boiling point by barometric pressure. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_r.chart_scatter())}
+    {mo.as_html(_r.chart("scatter"))}
 
     Yes, the relationship is approximately linear.
     ///
 
     /// details | (b) Fit a least squares regression line. What proportion of variation in the boiling point is accounted for by linear regression on the barometric pressure?
 
-    {mo.as_html(_r.chart_lr())}
+    {mo.as_html(_r.chart("regression"))}
 
     $r^2$ = {_r.r2:.3g}. That is, {_r.r2 * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
     ///
@@ -560,20 +573,20 @@ def _(df_ex, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(exnum=7, predictor="Year", response="Time")
+    _r = Regression(dnum=7, x="Year", y="Time")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the winning times by year. Does the relationship appear to be approximately linear?
 
-    {mo.as_html(_r.chart_scatter())}
+    {mo.as_html(_r.chart("scatter"))}
 
     Yes, the relationship is approximately linear.
     ///
 
     /// details | (b) Fit a least squares regression line.
 
-    {mo.as_html(_r.chart_lr())}
+    {mo.as_html(_r.chart("regression"))}
     ///
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
@@ -602,7 +615,7 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    To find the minumum of the sum of errors
+    To find the minimum of the sum of errors
     $$Q = \sum (\beta_1 x_i - y_i)^2,$$
     we take its derivative with respect to $\beta_1$:
     $$\begin{align*} 
@@ -652,7 +665,7 @@ def _(Regression, mo, np, stats):
     from typing import NamedTuple
 
 
-    class regressionInference(Regression):
+    class RegressionInference(Regression):
         class slopeTestResult(NamedTuple):
             pval: float
             t: float
@@ -671,7 +684,7 @@ def _(Regression, mo, np, stats):
                     'greater': β1 > k
 
             output:
-                a slopeTestResult object containing the P-value and the t-statisic.
+                a slopeTestResult object containing the P-value and the t-statistic.
             """
             t = (self.β1 - k) / self.se_β1
             match alternative:
@@ -713,13 +726,13 @@ def _(Regression, mo, np, stats):
                     self.s2 * (1 + 1 / self.n + (x - self.xmean) ** 2 / self.sxx)
                 )
             else:
-                raise ValueError("Unkown interval kind")
+                raise ValueError("Unknown interval kind")
 
             return [y - t_crit * se, y + t_crit * se]
 
 
     mo.show_code()
-    return (regressionInference,)
+    return (RegressionInference,)
 
 
 @app.cell(hide_code=True)
@@ -735,8 +748,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, regressionInference):
-    _r = regressionInference(exnum=5, predictor="Year", response="Distance")
+def _(RegressionInference, mo):
+    _r = RegressionInference(dnum=5, x="Year", y="Distance")
     _pval, _t = _r.slopeTest(alternative="greater")
     [_l, _h] = _r.estimateInterval(2004, kind="PI")
 
@@ -769,8 +782,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, regressionInference):
-    _r = regressionInference(exnum=6, predictor="Pressure", response="Temp")
+def _(RegressionInference, mo):
+    _r = RegressionInference(dnum=6, x="Pressure", y="Temp")
     [_l, _h] = _r.estimateInterval(28, kind="CI")
 
     mo.output.append(
@@ -810,8 +823,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, regressionInference):
-    _r = regressionInference(exnum=4, predictor="LAST", response="NEXT")
+def _(RegressionInference, mo):
+    _r = RegressionInference(dnum=4, x="LAST", y="NEXT")
     [_l, _h] = _r.estimateInterval(3, kind="PI")
 
     mo.output.append(
@@ -863,8 +876,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, regressionInference):
-    _r = regressionInference(exnum=7, predictor="Year", response="Time")
+def _(RegressionInference, mo):
+    _r = RegressionInference(dnum=7, x="Year", y="Time")
     [_l, _h] = _r.estimateInterval(2004, kind="PI")
     _x = _r.predict(y=60)
 
@@ -1130,7 +1143,7 @@ def _(mo):
     p = \frac{\exp{(\beta_0 + \beta_1 x)}}{1+\exp{(\beta_o + \beta_1 x)}}.
     $$
 
-    For example, the stimulus is the dose level of a drug and the response is cured or is notcured. Find the linearizing transformation $h(p)$ so that $h(p) = \beta_0 + \beta_1 x$.
+    For example, the stimulus is the dose level of a drug and the response is cured or is not cured. Find the linearizing transformation $h(p)$ so that $h(p) = \beta_0 + \beta_1 x$.
     """
     )
     return
@@ -1331,7 +1344,7 @@ def _(df_ex, html, md, mo):
                     .fmt_integer(columns="No")
                     .tab_source_note(
                         source_note=md(
-                            "This exercise is based on Example 6, Ch. 3 of F. Mosteller. S. E. Fienherg, and R. E. K. Rourke (1983). _Beginning Stalislics with Data Analysis_, Reading. MA: Addison-Wesley."
+                            "This exercise is based on Example 6, Ch. 3 of F. Mosteller. S. E. Fienherg, and R. E. K. Rourke (1983). _Beginning Statistics with Data Analysis_, Reading. MA: Addison-Wesley."
                         )
                     )
                 )
@@ -1670,7 +1683,7 @@ def _(alt, df_ex, linreg, mo, pl):
         - x1y1: some linearity
         - x1y2: clearly quadratic relationship
         - x1y3: otherwise strong linearity except for one outlier
-        - x2y4: linearrity questionable, as multiple data points have the same $x$.
+        - x2y4: linearity questionable, as multiple data points have the same $x$.
     ///
 
     /// details | (b) Fit LS straight lines to the four plots and compute the usual statistics that accompany the LS fits. Note that the numerical results are identical.
