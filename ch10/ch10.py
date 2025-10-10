@@ -12,6 +12,9 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _():
+    from sys import stderr
+    # from dataclasses import dataclass
+
     import marimo as mo
     import polars as pl
     from polars import col
@@ -19,18 +22,18 @@ def _():
     import altair as alt
     from scipy import stats
     from great_tables import GT, md, html
-    from dataclasses import dataclass
 
-    import inspect
+    alt.theme.enable("carbong90")
 
+    # import inspect
 
-    def get_source(func) -> str:
-        """Display a function's source code as markdown"""
-        source = inspect.getsource(func)
-        return f"""```python
-    {source}
-    ```"""
-    return GT, alt, col, html, md, mo, np, pl, stats
+    # def get_source(func) -> str:
+    #     """Display a function's source code as markdown"""
+    #     source = inspect.getsource(func)
+    #     return f"""```python
+    # {source}
+    # ```"""
+    return GT, alt, col, html, md, mo, np, pl, stats, stderr
 
 
 @app.cell(hide_code=True)
@@ -176,8 +179,10 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(GT, alt, col, mo, pl):
+def _(GT, alt, col, mo, pl, stderr):
     class Regression:
+        _dark_mode = True
+
         @staticmethod
         def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
             """
@@ -226,51 +231,27 @@ def _(GT, alt, col, mo, pl):
                 se_β1.alias("se_β1"),
             )
 
-        def _calc(self) -> None:
-            stats = self.df.select(
-                self.linreg(col(self._x_name), col(self._y_name))
-            ).item()
-            vars(self).update(stats)
-            self.df = self.df.with_columns(
-                residual=col(self._y_name)
-                - (self.β0 + self.β1 * col(self._x_name)),
-                y0=0,
-            )
-
-        @staticmethod
-        def _parseLabel(s: str):
-            return s.split(":") if ":" in s else [s] * 2
-
         @staticmethod
         def ex(dnum: int) -> pl.DataFrame:
+            """load exercise data"""
             datafile = f"../SDAEI-Tamhane/ch10/Ex10-{dnum}.json"
             return pl.read_json(datafile).explode(pl.all())
 
         @staticmethod
-        def gt(dnum: int, dark: bool = True) -> GT:
-            """return a GT preset in dark mode"""
-            gt = Regression.ex(dnum).style.tab_options(
-                table_font_size=12,
-                # table_width="60%",
-                container_height="60vh",
+        def gt(d: int | pl.DataFrame) -> GT:
+            """return dataframe as a GT object, preset in dark mode"""
+            df = Regression.ex(d) if isinstance(d, int) else d
+            gt = df.style.tab_options(
+                table_font_size=11,
+                container_height="40vh",
             )
-            if dark:
+            if Regression._dark_mode:
                 gt = gt.tab_options(
                     table_font_color="white",
                     table_background_color="#181C1A",
                 )
 
             return gt
-
-        def __init__(
-            self, dnum: int, x_label: str = "x", y_label: str = "y"
-        ) -> None:
-            self.df = self.ex(dnum)
-
-            self._x_name, self._x_title = self._parseLabel(x_label)
-            self._y_name, self._y_title = self._parseLabel(y_label)
-
-            self._calc()
 
         def predict(
             self, *, x: float | None = None, y: float | None = None
@@ -282,32 +263,79 @@ def _(GT, alt, col, mo, pl):
             else:
                 raise ValueError("Either x or y should be used.")
 
-        def _chart_scatter(self, x: str, y: str) -> alt.Chart:
-            return self.df.plot.scatter(
-                x=alt.X(x).title(self._x_title).scale(zero=False, padding=10),
-                y=alt.Y(self._y_name)
-                .title(self._y_title)
-                .scale(zero=False, padding=10),
+        def chart(
+            self,
+            kind: str = "scatter",
+            *,
+            x: str | None = None,
+            y: str | None = None,
+        ) -> alt.Chart:
+            x_name, x_title = (
+                self._x_name,
+                self._x_title if x is None else self._parse(x),
+            )
+            y_name, y_title = (
+                self._y_name,
+                self._y_title if x is None else self._parse(x),
             )
 
-        def _chart_regression(self) -> alt.Chart:
-            scatter = self._chart_scatter()
-            line = scatter.transform_regression(
-                self._x_name, self._y_name
-            ).mark_line(color="red")
-            title = f"LS fit: {self._y_title} = {self.β0:.3g} {'-' if self.β1 < 0 else '+'} {abs(self.β1):.3g}×{self._x_title}"
-            return (scatter + line).properties(title=title)
-
-        def chart(self, kind: str = "scatter") -> alt.Chart:
             match kind:
                 case "scatter":
-                    chart = self._chart_scatter()
+                    chart = self._chart_scatter(x_name, x_title, y_name, y_title)
                 case "regression":
+                    if not (x is None and y is None):
+                        print(
+                            f"Can only generate regression chart of {self._y_name} vs. {self._x_name}.",
+                            file=stderr,
+                        )
                     chart = self._chart_regression()
                 case _:
                     raise ValueError("Unkown chart kind.")
 
             return chart
+
+        def _calc(self, x: str, y: str) -> None:
+            self._setLabels(x, y)
+            stats = self.df.select(
+                self.linreg(col(self._x_name), col(self._y_name))
+            ).item()
+            vars(self).update(stats)
+
+        @staticmethod
+        def _parse(s: str):
+            return s.split(":") if ":" in s else [s] * 2
+
+        def _setLabels(self, x: str | None, y: str | None) -> None:
+            if x:
+                self._x_name, self._x_title = Regression._parse(x)
+            if y:
+                self._y_name, self._y_title = Regression._parse(y)
+
+        def __init__(self, dnum: int, *, x: str, y: str) -> None:
+            self.df = self.ex(dnum)
+            self._calc(x, y)
+
+        def _chart_scatter(
+            self, x_name: str, x_title: str, y_name: str, y_title: str
+        ) -> alt.Chart:
+            return (
+                alt.Chart(self.df)
+                .mark_circle(size=50)
+                .encode(
+                    x=alt.X(x_name).title(x_title).scale(zero=False, padding=10),
+                    y=alt.Y(y_name).title(y_title).scale(zero=False, padding=10),
+                )
+            )
+
+        def _chart_regression(self) -> alt.Chart:
+            scatter = self._chart_scatter(
+                self._x_name, self._x_title, self._y_name, self._y_title
+            )
+            line = scatter.transform_regression(
+                self._x_name, self._y_name
+            ).mark_line(size=3)
+            title = f"LS fit: {self._y_title} = {self.β0:.4g} {'-' if self.β1 < 0 else '+'} {abs(self.β1):.4g}×{self._x_title}"
+            return (line + scatter).properties(title=title)
 
 
     mo.show_code()
@@ -354,7 +382,7 @@ def _(Regression, html, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=4, x_label="LAST", y_label="NEXT")
+    _r = Regression(dnum=4, x="LAST", y="NEXT")
 
     mo.md(
         rf"""
@@ -369,20 +397,18 @@ def _(Regression, mo, np):
 
     {mo.as_html(_r.chart("regression"))}
 
-    The fit result is that $\beta_0$ = {_r.β0:.3g} and $\beta_1$ = {_r.β1:.3g}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about {_r.β0:.3g} + {_r.β1:.3g} × 3 = {_r.predict(x=3):.3g} minutes.
+    The fit result is that $\beta_0$ = {_r.β0:.4g} and $\beta_1$ = {_r.β1:.4g}. If the last eruption lasted 3 minutes, the time to the next eruption would be in about {_r.β0:.4g} + {_r.β1:.4g} × 3 = {_r.predict(x=3):.4g} minutes.
     ///
 
     /// details | (c) What proportion of variability in NEXT is accounted for by LAST? Does it suggest that LAST is a good predictor of NEXT?
 
-    $r^2$ = {_r.r2:.3g}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
+    $r^2$ = {_r.r2:.4g}, suggesting that `LAST` is a pretty good predictor of `NEXT`.
     ///
 
     /// details | (d) Calculate the mean square error estimate of $\sigma$.
 
-    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
-    ///
-
-                """
+    $s^2$ = {_r.s2:.4g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.4g}.
+    ///"""
     )
     return
 
@@ -419,7 +445,7 @@ def _(Regression, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=5, x_label="Year", y_label="Distance")
+    _r = Regression(dnum=5, x="Year", y="Distance")
 
     # _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
     #     alt.X("Year:T"),
@@ -442,7 +468,7 @@ def _(Regression, mo, np):
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
+    $s^2$ = {_r.s2:.4g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.4g}.
     ///
     """
     )
@@ -478,7 +504,7 @@ def _(Regression, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=6, x_label="Pressure", y_label="Temp")
+    _r = Regression(dnum=6, x="Pressure", y="Temp")
 
     mo.md(
         rf"""
@@ -493,12 +519,12 @@ def _(Regression, mo, np):
 
     {mo.as_html(_r.chart("regression"))}
 
-    $r^2$ = {_r.r2:.3g}. That is, {_r.r2 * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
+    $r^2$ = {_r.r2:.4g}. That is, {_r.r2 * 100:.1f}% percent of variation in the boiling point is accounted for by linear regression on the barometric pressure.
     ///
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
+    $s^2$ = {_r.s2:.4g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.4g}.
     ///"""
     )
     return
@@ -536,7 +562,7 @@ def _(Regression, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=7, x_label="Year", y_label="Time")
+    _r = Regression(dnum=7, x="Year", y="Time")
 
     mo.md(
         rf"""
@@ -554,7 +580,7 @@ def _(Regression, mo, np):
 
     /// details | (c) Calculate the mean square error estimate of $\sigma$.
 
-    $s^2$ = {_r.s2:.3g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.3g}.
+    $s^2$ = {_r.s2:.4g}, and the mean square error estimate of $\sigma$ is $s$ = {np.sqrt(_r.s2):.4g}.
     ///
     """
     )
@@ -712,7 +738,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=5, x_label="Year", y_label="Distance")
+    _r = RegressionInference(dnum=5, x="Year", y="Distance")
     _pval, _t = _r.slopeTest(alternative="greater")
     [_l, _h] = _r.estimateInterval(2004, kind="PI")
 
@@ -720,12 +746,12 @@ def _(RegressionInference, mo):
         rf"""
     /// details | (a) Is there a significant increasing linear trend in the triple jump distance? Test at $\alpha = .05$.
 
-    This is a test of $H_0: \beta_1 \le 0$ and the $t$-statistic is {_t:.3g} with a one-sided $P$-value of {_pval:.3g} < $\alpha$. So yes there is a significant increasing trend.
+    This is a test of $H_0: \beta_1 \le 0$ and the $t$-statistic is {_t:.4g} with a one-sided $P$-value of {_pval:.4g} < $\alpha$. So yes there is a significant increasing trend.
     ///
 
     /// details | (b) Calculate a 95% PI for the winning jump in 2004. Do you think this prediction is reliable? Why or why not? Would a 95% CI for the winning jump in 2004 have a meaningful interpretation? Explain.
 
-    A 95% PI for the winning jump in 2004 is [{_l:.3g}, {_h:.3g}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
+    A 95% PI for the winning jump in 2004 is [{_l:.4g}, {_h:.4g}], but it is not reliable since we are extrapolating. In this case, a CI is not meaningful because there will be at most a single winning jump in 2004. 
     ///
     """
     )
@@ -746,7 +772,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=6, x_label="Pressure", y_label="Temp")
+    _r = RegressionInference(dnum=6, x="Pressure", y="Temp")
     [_l, _h] = _r.estimateInterval(28, kind="CI")
 
     mo.output.append(
@@ -754,7 +780,7 @@ def _(RegressionInference, mo):
             rf"""
     /// details | (a) Calculate a 95% CI for the boiling point if the barometric pressure is 28 inches of mercury. Interpret your CI.
 
-    The said CI is calculated to be [{_l:.2f}, {_h:.2f}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
+    The said CI is calculated to be [{_l:.4g}, {_h:.4g}]. That is to say, there is a 95% chance that this interval includes the boiling point at 28 inches of of mercury on the true regression line.
     ///"""
         )
     )
@@ -766,7 +792,7 @@ def _(RegressionInference, mo):
             rf"""
     /// details | (b) Calculate a 95% CI for the boiling point if the barometric pressure is 31 inches of mercury. Compare this with the CI of (a).
 
-    The said CI is calculated to be [{_l:.2f}, {_h:.2f}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
+    The said CI is calculated to be [{_l:.4g}, {_h:.4g}]. It is much wider than (a) at 28 inches of mercury and should be treated as unreliable because we are extrapolating outside the data domain.
     /// """
         )
     )
@@ -787,7 +813,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=4, x_label="LAST", y_label="NEXT")
+    _r = RegressionInference(dnum=4, x="LAST", y="NEXT")
     [_l, _h] = _r.estimateInterval(3, kind="PI")
 
     mo.output.append(
@@ -795,7 +821,7 @@ def _(RegressionInference, mo):
             rf"""
     /// details | (a) Calculate a 95% PI for the time to the next eruption if the last eruption lasted 3 minutes.
 
-    The said PI is calculated to be [{_l:.2f}, {_h:.2f}].
+    The said PI is calculated to be [{_l:.4g}, {_h:.4g}].
     ///"""
         )
     )
@@ -807,7 +833,7 @@ def _(RegressionInference, mo):
             rf"""
     /// details | (b) Calculate a 95% CI for the mean time to the next eruption for a last eruption lasting 3 minutes. Compare this CI with the PI obtained in (a).
 
-    The said CI is calculated to be [{_l:.2f}, {_h:.2f}] which is a lot narrower than the PI in (a).
+    The said CI is calculated to be [{_l:.4g}, {_h:.4g}] which is a lot narrower than the PI in (a).
     ///"""
         )
     )
@@ -819,7 +845,7 @@ def _(RegressionInference, mo):
             rf"""
     /// details | (c) Repeat (a) if the last eruption lasted 1 minute. Do you think this prediction is reliable? Why or why not?
 
-    The PI for a 1 minute last eruption is [{_l:.2f}, {_h:.2f}] which is unreliable because we are extrapolating outside of the data domain.
+    The PI for a 1 minute last eruption is [{_l:.4g}, {_h:.4g}] which is unreliable because we are extrapolating outside of the data domain.
     """
         )
     )
@@ -840,7 +866,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=7, x_label="Year", y_label="Time")
+    _r = RegressionInference(dnum=7, x="Year", y="Time")
     [_l, _h] = _r.estimateInterval(2004, kind="PI")
     _x = _r.predict(y=60)
 
@@ -848,14 +874,13 @@ def _(RegressionInference, mo):
         rf"""
     /// details | (a) Calculate a 95% PI for the winning time in 2004. Do you think this prediction is reliable? Why or why not?
 
-    The specified PI is calculated to be [{_l:.1f}, {_h:.1f}]. However, this prediction is unreliable because we are extrapolating outside the data range (latest available year was 1996).
+    The specified PI is calculated to be [{_l:.4g}, {_h:.4g}]. However, this prediction is unreliable because we are extrapolating outside the data range (latest available year was 1996).
     ///
 
     /// details | (b) Use the regression equation to find the year in which the winning time would break 1 minute. Given that the Olympics are every four years, during which Olympics would this happen?
 
     The year {_x:.0f} (by inverse regression).
-    ///
-    """
+    ///"""
     )
     return
 
@@ -923,7 +948,7 @@ def _(mo, np, stats):
 
     Reading off the MINITAB output, the rate of IMR decrease is {_β1} deaths per 1,000 live births per year. 
 
-    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\textrm{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.3f} with $P$-value {_pval:.3f} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
+    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\textrm{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.4g} with $P$-value {_pval:.4g} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
     /// """
         )
     )
@@ -947,9 +972,8 @@ def _(mo, np, stats):
             rf"""
     /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{{xx}}$ can be obtained from the values of $\textrm{{Stdev}}(\hat{{\beta}}_1)$ and $s$ given in the MINITAB output.)
 
-    $S_{{xx}}$ can be obtained as in the note, or simply $S_{{xx}} = \textrm{{SSR}}/\hat{{\beta}}_1^2$, and both $\textrm{{SSR}}$ and $\hat{{\beta}}_1$ are in the MINITAB output. Anyways, the calculated IMR for the year 1995 is {_y:.2f} ± {_err:.2f} = [{_y - _err:.2f}, {_y + _err:.2f}].
-    ///
-    """
+    $S_{{xx}}$ can be obtained as in the note, or simply $S_{{xx}} = \textrm{{SSR}}/\hat{{\beta}}_1^2$, and both $\textrm{{SSR}}$ and $\hat{{\beta}}_1$ are in the MINITAB output. Anyways, the calculated IMR for the year 1995 is {_y:.4g} ± {_err:.4g} = [{_y - _err:.4g}, {_y + _err:.4g}].
+    ///"""
         )
     )
     return
@@ -1020,53 +1044,86 @@ def _(mo):
 
 
 @app.cell
-def _(Regression, alt, mo, pl):
-    class RegressionDiagnosis(Regression):
+def _(RegressionInference, alt, col, mo, pl):
+    from copy import deepcopy
+
+    class RegressionDiagnosis(RegressionInference):
+        def _calc(self, x: str, y: str) -> None:
+            """add residual and y0=0 columns"""
+            super()._calc(x, y)
+            self.df = self.df.with_columns(
+                residual=col(self._y_name)
+                - (self.β0 + self.β1 * col(self._x_name)),
+                y0=0,
+            )
+
         def transform(
             self,
             x_transform: pl.Expr | None = None,
-            x_label: str = "x_transformed",
+            x: str | None = None,
             y_transform: pl.Expr | None = None,
-            y_label: str = "y_transformed",
-        ) -> None:
+            y: str | None = None,
+        ) -> "RegressionDiagnosis":
+            r = deepcopy(self)
+        
             if x_transform is not None:
-                self._x_name, self._x_title = self._parseLabel(x_label)
-                self.df = self.df.with_columns(x_transform.alias(self._x_name))
+                x_name, _ = r._parse(x) if x else r._x_name
+                r.df = r.df.with_columns(x_transform.alias(x_name))
             if y_transform is not None:
-                self._y_name, self._y_title = self._parseLabel(y_label)
-                self.df = self.df.with_columns(y_transform.alias(self._y_name))
+                y_name, _ = r._parse(y) if y else r._y_name
+                r.df = r.df.with_columns(y_transform.alias(y_name))
             if not (x_transform is None and y_transform is None):
-                self._calc()
+                r._calc(x, y)
+            
+            return r
 
         def _chart_residual(self) -> alt.Chart:
-            scatter = self.df.plot.circle(
-                x=alt.X(self._x_name)
-                .title(self._x_title)
-                .scale(zero=False, padding=10)
-                .axis(grid=False),
-                y=alt.Y("residual").scale(zero=False, padding=10),
-            ).properties(title="residual plot")
-            fill = self.df.plot.rule(
-                x=self._x_name,
-                y=alt.Y("y0").title(None),
-                y2="residual",
-                size=alt.value(0.2),
+            scatter = (
+                alt.Chart(self.df)
+                .mark_circle(size=50)
+                .encode(
+                    x=alt.X(self._x_name)
+                    .title(self._x_title)
+                    .scale(zero=False, padding=10)
+                    .axis(grid=False),
+                    y=alt.Y("residual").scale(zero=False, padding=10),
+                )
+                .properties(title="residual plot")
             )
-            axis = self.df.plot.rule(y="y0")
+            filling = (
+                alt.Chart(self.df)
+                .mark_rule(size=0.3, color="lightblue", strokeDash=[4, 2])
+                .encode(
+                    x=alt.X(self._x_name),
+                    y=alt.Y("y0").title(None),
+                    y2=alt.Y2("residual"),
+                )
+            )
+            axis = (
+                alt.Chart(self.df)
+                .mark_rule(size=0.6, color="lightblue")
+                .encode(y="y0")
+            )
 
-            return scatter + fill + axis
+            return scatter + filling + axis
 
         def _chart_normal(self) -> alt.Chart:
             pass
 
-        def chart(self, kind: str = "residual") -> alt.Chart:
+        def chart(
+            self,
+            kind: str = "scatter",
+            *,
+            x: str | None = None,
+            y: str | None = None,
+        ) -> alt.Chart:
             match kind:
                 case "residual":
                     chart = self._chart_residual()
                 case "normal":
                     chart = self._chart_normal()
                 case _:
-                    chart = super().chart(kind=kind)
+                    chart = super().chart(kind, x=x, y=y)
 
             return chart
 
@@ -1149,7 +1206,9 @@ def _(Regression, alt, mo, pl):
     _chart = (
         alt.Chart(_df)
         .mark_line(point=True)
-        .encode(alt.X(alt.repeat("column"), type="quantitative"), alt.Y("Prop"))
+        .encode(
+            x=alt.X(alt.repeat("column"), type="quantitative"), y=alt.Y("Prop")
+        )
         .properties(width=200)
         .repeat(column=["h1", "h2", "h3"])
     )
@@ -1202,9 +1261,6 @@ def _(Regression, md, mo):
             mo.center(
                 mo.as_html(
                     Regression.gt(17)
-                    .tab_options(
-                        table_width="50%",
-                    )
                     .cols_align("center")
                     .cols_label(P="p")
                     .fmt_integer(columns="t")
@@ -1223,8 +1279,8 @@ def _(Regression, md, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo, np):
-    _r = RegressionDiagnosis(dnum=17, x_label="t", y_label="P:p")
-    _r.transform(x_transform=col("t").log(), x_label="h:ln(t)")
+    _r = RegressionDiagnosis(dnum=17, x="t", y="P:p")
+    _r = _r.transform(x_transform=col("t").log(), x="h:ln(t)")
 
     mo.md(
         r"""
@@ -1238,7 +1294,7 @@ def _(RegressionDiagnosis, col, mo, np):
 
     /// details | (b) Fit a trend line to the plot in (a). From the trend line estimate the time for 50% retention.
 
-    The trend line is $\hat p = {_r.β0:.3g} - {abs(_r.β1):.3g}h$.
+    The trend line is $\hat p = {_r.β0:.4g} - {abs(_r.β1):.4g}h$.
 
     {mo.as_html(_r.chart("regression"))}
 
@@ -1246,7 +1302,7 @@ def _(RegressionDiagnosis, col, mo, np):
         r"""
     Because $p = \beta_0 + \beta_1\;\ln{t}$, $t=\exp{[(p-\beta_0)/\beta_1]}$.
     """
-        rf""" For p = 50% retention, $t = {np.exp((0.5 - _r.β0) / _r.β1):.4g}$ minutes.
+        rf""" For p = 50% retention, $t = {np.exp(_r.predict(y=0.5)):.4g}$ minutes.
     """
     )
     return
@@ -1284,8 +1340,8 @@ def _(Regression, html, md, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo, np):
-    _r = RegressionDiagnosis(dnum=18, x_label="No:Planet No.", y_label="Dist")
-    _r.transform(y_transform=col("Dist").log(), y_label="h:ln(Distance)")
+    _r = RegressionDiagnosis(dnum=18, x="No:Planet No.", y="Dist")
+    _r = _r.transform(y_transform=col("Dist").log(), y="h:ln(Distance)")
 
     mo.md(
         rf"""
@@ -1300,16 +1356,15 @@ def _(RegressionDiagnosis, col, mo, np):
 
     /// details | (b) Fit a least squares straight line after linearizing the relationship.
 
-    The least squares line is $h = {_r.β0:.3g} + {_r.β1:.3g}\;x$.
+    The least squares line is $h = {_r.β0:.4g} + {_r.β1:.4g}\;x$.
 
     {mo.as_html(_r.chart("regression"))}
     ///
 
     /// details | (c) It is speculated that there is a planet beyond Pluto, called Planet X. Predict its distance from the sun.
 
-    $h^*={_r.β0:.3g} + {_r.β1:.3g} \cdot 11 = {_r.predict(x=11):.3f}$. So distance = $\exp{{(h^*)}}$ = {np.exp(_r.predict(x=11)):.0f} millions of miles.
-    ///
-    """
+    $h^*={_r.β0:.4g} + {_r.β1:.4g} \cdot 11 = {_r.predict(x=11):.4g}$. So distance = $\exp{{(h^*)}}$ = {np.exp(_r.predict(x=11)):.0f} millions of miles.
+    ///"""
     )
     return
 
@@ -1347,8 +1402,8 @@ def _(Regression, html, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo):
-    _r = RegressionDiagnosis(dnum=19, x_label="Distan:distance", y_label="Speed:speed")
-    _r.transform(y_transform=1/col("Speed")**2, y_label="h:1/speed²")
+    _r = RegressionDiagnosis(dnum=19, x="Distan:distance", y="Speed:speed")
+    _r = _r.transform(y_transform=1/col("Speed")**2, y="h:1/speed²")
 
     mo.md(
         r""" 
@@ -1360,7 +1415,7 @@ def _(RegressionDiagnosis, col, mo):
         rf"""
     {mo.as_html(_r.chart("scatter"))}
 
-    To fit this linear relationship, we should force $\beta_0 = 0$ and use _regression through the origin_. $\hat{{\beta}}_1$ = {_r.rto:.3g}.
+    To fit this linear relationship, we should force $\beta_0 = 0$ and use _regression through the origin_. $\hat{{\beta}}_1$ = {_r.rto:.4g}.
     """
     )
     return
@@ -1393,9 +1448,9 @@ def _(Regression, html, mo):
 
 
 @app.cell(hide_code=True)
-def _(RegressionDiagnosis, col, mo, stats):
-    _r = RegressionDiagnosis(dnum=20, x_label="x:speed", y_label="y:stop distance")
-    _pval = stats.f.sf(_r.f, 1, _r.n - 2)
+def _(RegressionDiagnosis, col, mo):
+    _r = RegressionDiagnosis(dnum=20, x="x:speed", y="y:stop distance")
+    _pval, _ = _r.slopeTest()
 
     mo.output.append(
         mo.md(
@@ -1407,7 +1462,7 @@ def _(RegressionDiagnosis, col, mo, stats):
 
     /// details | (b) Comment on the goodness of the fit based on the overall $F$-statistic and the residual plot. Which two assumptions of the linear regression model seem to be violated?
 
-    The $F$-statistic is {_r.f:.3g} with $P$-value = {_pval:.3g}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
+    The $F$-statistic is {_r.f:.4g} with $P$-value = {_pval:.4g}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
     ///
 
     /// details | (c) Based on the residual plot, what transformation of stopping distance should be used to linearize the relationship with respect to speed? A clue to find this transformation is provided by the following engineering argument: In bringing a car to a stop, its kinetic energy is dissipated as its braking energy, and the two are roughly equal. The kinetic energy is proportional to the square of the car's speed, while the braking energy is proportional to the stopping distance, assuming a constant braking force.
@@ -1418,9 +1473,8 @@ def _(RegressionDiagnosis, col, mo, stats):
         )
     )
 
-    _r.transform(y_transform=col("y").sqrt(), y_label="h:√distance")
-    _pval = stats.f.sf(_r.f, 1, _r.n - 2)
-    _y = _r.predict(x=40) ** 2
+    _r = _r.transform(y_transform=col("y").sqrt(), y="h:√distance")
+    _pval, _ = _r.slopeTest()
 
     mo.output.append(
         mo.md(
@@ -1429,11 +1483,10 @@ def _(RegressionDiagnosis, col, mo, stats):
 
     {mo.as_html(_r.chart("regression") | _r.chart("residual"))}
 
-    The $F$-statistic is {_r.f:.3g} with $P$-value = {_pval:.3g}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
+    The $F$-statistic is {_r.f:.4g} with $P$-value = {_pval:.4g}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
 
-    The stopping distance of a car traveling at 40 mph would be $y = h^2 = ({_r.β0:.3g} +  {_r.β1:.3g} \cdot 40)^2$ = {_y:.3g} feet.
-    ///
-    """
+    The stopping distance of a car traveling at 40 mph would be $y = ({_r.β0:.4g} +  {_r.β1:.4g} \cdot 40)^2$ = {_r.predict(x=40) ** 2:.4g} feet.
+    ///"""
         )
     )
     return
@@ -1470,8 +1523,10 @@ def _(Regression, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(RegressionDiagnosis, mo):
-    _r = RegressionDiagnosis(dnum=21, x_label="mph:wind velocity", y_label="amps:DC output")
+def _(RegressionDiagnosis, col, mo):
+    _r = RegressionDiagnosis(dnum=21, x="mph:wind velocity", y="amps:DC output")
+
+    _s = _r.transform(x_transform=1 / col("mph"), x="h:1/velocity")
 
     mo.md(
         rf"""
@@ -1479,24 +1534,22 @@ def _(RegressionDiagnosis, mo):
 
     {mo.as_html(_r.chart("scatter"))}
 
-    The scatter plot shows that the DC output increases with the wind velocity, but the increase gradually peters out. Let's take the transformation $y \to y^3$ and fit the LS line.
+    The scatter plot shows that the DC output increases with the wind velocity, but the increase gradually peters out. Let's take the transformation $x \to 1/x$ and fit the LS line.
 
-    {mo.as_html(_r.chart_ls)}
-
+    {mo.as_html(_s.chart("regression"))}
     ///
 
     ///details | (b) Check the goodness of fit by making residual plots. Do the assumptions of linear regression seem to be satisfied?
 
-    {mo.as_html(_r.chart_err)}
+    {mo.as_html(_s.chart("residual"))}
 
-    The $F$-statistic = {_r.f:.3f} indicating there's a significant linear relationship, and the residual plot appears to be normal. So yes, the assumptions of linear regression are satisfied.
+    The $F$-statistic = {_s.f:.4g} indicating there's a significant linear relationship, and the residual plot appears to be normal. So yes, the assumptions of linear regression are satisfied.
     ///
 
     /// details | (c) What is the predicted output if the wind velocity is 8 mph?
 
-    According to this model, the DC output at wind velocity = 8 mph would be {_y ** (1 / 3):.3f} amps. 
-    ///
-    """
+    According to this model, the DC output at wind velocity = 8 mph would be {_s.predict(x=1 / 8):.4g} amps. 
+    ///"""
     )
     return
 
@@ -1531,7 +1584,7 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(Regression, alt, linreg, mo, pl):
+def _(Regression, alt, mo, pl):
     _df = (
         Regression.ex(22)
         .select(
@@ -1545,13 +1598,18 @@ def _(Regression, alt, linreg, mo, pl):
         .select("dataset", pl.col("value").struct.unnest())
     )
 
-    _scatter = _df.plot.circle(
-        x=alt.X("x").scale(zero=False, padding=10),
-        y=alt.Y("y").scale(zero=False, padding=10),
-    ).facet(facet="dataset", columns=2)
+    _scatter = (
+        _df.plot.circle(
+            x=alt.X("x").scale(zero=False, padding=10),
+            y=alt.Y("y").scale(zero=False, padding=10),
+            size=alt.value(50),
+        )
+        .properties(height=200)
+        .facet(facet="dataset", columns=2)
+    )
 
-    _linreg_by_set = _df.group_by("dataset").agg(
-        linreg(pl.col("x"), pl.col("y")).struct.unnest()
+    _stats_by_set = _df.group_by("dataset").agg(
+        Regression.linreg(pl.col("x"), pl.col("y")).struct.unnest()
     )
 
     mo.md(
@@ -1572,13 +1630,11 @@ def _(Regression, alt, linreg, mo, pl):
     {
             mo.center(
                 mo.as_html(
-                    _linreg_by_set.style.tab_options(
-                        table_font_size=12,
-                    )
+                    Regression.gt(_stats_by_set)
                     .tab_header(
                         title="(almost) identical LS fit statistics by dataset"
                     )
-                    .cols_hide(columns=["n", "se_est_ci", "se_est_pi"])
+                    .cols_hide(columns=["n"])
                     .cols_align("center")
                     .tab_stub(rowname_col="dataset")
                     .tab_stubhead(label="dataset")
@@ -1675,7 +1731,7 @@ def _(alt, col, df_ex, linreg_chart, mo, np):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.24
@@ -1685,12 +1741,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(24)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                        container_height="50vh",
-                    )
+                    Regression.gt(24)
                     .cols_align("center")
                     .fmt_integer(columns=["h", "l"])
                     .tab_source_note(
@@ -1768,7 +1819,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.28
@@ -1778,12 +1829,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(28)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="50%",
-                        container_height="50vh",
-                    )
+                    Regression.gt(28)
                     .cols_align("center")
                     .fmt_integer(columns=["Height", "Weight"])
                     .tab_source_note(
