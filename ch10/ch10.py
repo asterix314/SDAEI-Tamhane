@@ -30,14 +30,7 @@ def _():
         return f"""```python
     {source}
     ```"""
-
-
-    def df_ex(n: int) -> pl.DataFrame:
-        """return dataframe of exercise number n"""
-        fname = f"../SDAEI-Tamhane/ch10/Ex10-{n}.json"
-        # print(f'loading exercise data from "{fname}"')
-        return pl.read_json(fname).explode(pl.all())
-    return alt, col, dataclass, df_ex, get_source, html, md, mo, np, pl, stats
+    return GT, alt, col, html, md, mo, np, pl, stats
 
 
 @app.cell(hide_code=True)
@@ -162,51 +155,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, pl):
-    def linreg(x: pl.Expr, y: pl.Expr, x_star: float | None = None) -> pl.Expr:
-        """
-        Gives results of simple linear regression and estimation
-        by directly translating textbook formulas to polars expressions.
-
-        Input:
-        - x, y: observations
-        - x_star: input point for estimation
-
-        Output:
-        β0/1: intercept/slope of regression line
-        r2: coefficient of determination
-        s2: mean square error estimate of σ^2
-        f: F statistic of H0: β1 = 0. f=t^2
-        se_β0/1: standard error of β0/1
-        se_est_ci/pi: standard error of the estimation confidence/prediction interval
-        """
-        n = x.len()
-        sxx = ((x - x.mean()) ** 2).sum()
-        syy = ((y - y.mean()) ** 2).sum()
-        sxy = ((x - x.mean()) * (y - y.mean())).sum()
-        β1 = sxy / sxx
-        β0 = y.mean() - x.mean() * β1
-        r2 = sxy**2 / (sxx * syy)
-        s2 = (syy - β1**2 * sxx) / (n - 2)
-        f = β1**2 * sxx / s2
-        se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
-        se_β1 = (s2 / sxx).sqrt()
-        se_est_ci = (s2 * (1 / n + (x_star - x.mean()) ** 2 / sxx)).sqrt()
-        se_est_pi = (s2 * (1 + 1 / n + (x_star - x.mean()) ** 2 / sxx)).sqrt()
-        return pl.struct(
-            n.alias("n"),
-            β0.alias("β0"),
-            β1.alias("β1"),
-            r2.alias("r2"),
-            s2.alias("s2"),
-            f.alias("f"),
-            se_β0.alias("se_β0"),
-            se_β1.alias("se_β1"),
-            se_est_ci.alias("se_est_ci"),
-            se_est_pi.alias("se_est_pi"),
-        )
-
-
+def _(mo):
     mo.md(
         r"""
     The _least squares(LS) estimates_ $\hat{\beta}_0$ and $\hat{\beta}_1$ minimize $Q = \sum_{i=1}^n [y_i - (\beta_0 + \beta_1 x_i) ]^2$ and are given by
@@ -223,42 +172,119 @@ def _(mo, pl):
     The *probabilistic model* for linear regression assumes that $y_i$ is the observed value of r.v. $Y \thicksim N(\mu_i, \sigma^2)$, where $\mu_i = \beta_0 + \beta_1 x_i$ and the $Y_i$ are independent. An unbiased estimate of $\sigma^2$ is provided by $s^2 = \mathrm{SSE}/(n - 2)$ with $n-2$ d.f.
     """
     )
-    return (linreg,)
+    return
 
 
 @app.cell(hide_code=True)
-def _(alt, col, mo, pl):
+def _(GT, alt, col, mo, pl):
     class Regression:
+        @staticmethod
+        def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
+            """
+            Gives various linear regression statistics by directly
+            translating textbook formulas to polars expressions.
+
+            Input:
+                - x, y: observations
+
+            Output: a pl.struct of
+                - n: number of data points
+                - xmean: mean of x
+                - sxx: sum of squares of x
+                - β0/1: intercept/slope of regression line
+                - rto: slope of regression through the origin
+                - r2: coefficient of determination
+                - s2: mean square error estimate of σ^2
+                - f: F statistic of H0: β1 = 0. f=t^2
+                - se_β0/1: standard error of β0/1
+            """
+            n = x.len()
+            xmean = x.mean()
+            ymean = y.mean()
+            sxx = ((x - xmean) ** 2).sum()
+            syy = ((y - ymean) ** 2).sum()
+            sxy = ((x - xmean) * (y - ymean)).sum()
+            β1 = sxy / sxx
+            β0 = ymean - xmean * β1
+            rto = (x * y).sum() / (x**2).sum()
+            r2 = sxy**2 / (sxx * syy)
+            s2 = (syy - β1**2 * sxx) / (n - 2)
+            f = β1**2 * sxx / s2
+            se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
+            se_β1 = (s2 / sxx).sqrt()
+            return pl.struct(
+                n.alias("n"),
+                xmean.alias("xmean"),
+                sxx.alias("sxx"),
+                β0.alias("β0"),
+                β1.alias("β1"),
+                rto.alias("rto"),
+                r2.alias("r2"),
+                s2.alias("s2"),
+                f.alias("f"),
+                se_β0.alias("se_β0"),
+                se_β1.alias("se_β1"),
+            )
+
         def _calc(self) -> None:
             stats = self.df.select(
                 self.linreg(col(self._x_name), col(self._y_name))
             ).item()
             vars(self).update(stats)
+            self.df = self.df.with_columns(
+                residual=col(self._y_name)
+                - (self.β0 + self.β1 * col(self._x_name)),
+                y0=0,
+            )
 
-        def __init__(self, dnum: int, x: str, y: str) -> None:
+        @staticmethod
+        def _parseLabel(s: str):
+            return s.split(":") if ":" in s else [s] * 2
+
+        @staticmethod
+        def ex(dnum: int) -> pl.DataFrame:
             datafile = f"../SDAEI-Tamhane/ch10/Ex10-{dnum}.json"
-            self.df = pl.read_json(datafile).explode(pl.all())
+            return pl.read_json(datafile).explode(pl.all())
 
-            parse = lambda s: s.split(":") if ":" in s else [s] * 2
-            self._x_name, self._x_title = parse(x)
-            self._y_name, self._y_title = parse(y)
+        @staticmethod
+        def gt(dnum: int, dark: bool = True) -> GT:
+            """return a GT preset in dark mode"""
+            gt = Regression.ex(dnum).style.tab_options(
+                table_font_size=12,
+                # table_width="60%",
+                container_height="60vh",
+            )
+            if dark:
+                gt = gt.tab_options(
+                    table_font_color="white",
+                    table_background_color="#181C1A",
+                )
+
+            return gt
+
+        def __init__(
+            self, dnum: int, x_label: str = "x", y_label: str = "y"
+        ) -> None:
+            self.df = self.ex(dnum)
+
+            self._x_name, self._x_title = self._parseLabel(x_label)
+            self._y_name, self._y_title = self._parseLabel(y_label)
+
             self._calc()
 
         def predict(
             self, *, x: float | None = None, y: float | None = None
         ) -> float:
-            if y is None and x is not None:
+            if x and not y:
                 return self.β0 + self.β1 * x
-            elif x is None and y is not None:  # inverse regression
+            elif y and not x:  # inverse regression
                 return (y - self.β0) / self.β1
             else:
                 raise ValueError("Either x or y should be used.")
 
-        def _chart_scatter(self) -> alt.Chart:
+        def _chart_scatter(self, x: str, y: str) -> alt.Chart:
             return self.df.plot.scatter(
-                x=alt.X(self._x_name)
-                .title(self._x_title)
-                .scale(zero=False, padding=10),
+                x=alt.X(x).title(self._x_title).scale(zero=False, padding=10),
                 y=alt.Y(self._y_name)
                 .title(self._y_title)
                 .scale(zero=False, padding=10),
@@ -279,54 +305,9 @@ def _(alt, col, mo, pl):
                 case "regression":
                     chart = self._chart_regression()
                 case _:
-                    raise ValueError("Unkown chart type")
+                    raise ValueError("Unkown chart kind.")
 
             return chart
-
-        @staticmethod
-        def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
-            """
-            Gives various linear regression statistics by directly
-            translating textbook formulas to polars expressions.
-
-            Input:
-                - x, y: observations
-
-            Output: a pl.struct of
-                - n: number of data points
-                - xmean: mean of x
-                - sxx: sum of squares of x
-                - β0/1: intercept/slope of regression line
-                - r2: coefficient of determination
-                - s2: mean square error estimate of σ^2
-                - f: F statistic of H0: β1 = 0. f=t^2
-                - se_β0/1: standard error of β0/1
-            """
-            n = x.len()
-            xmean = x.mean()
-            ymean = y.mean()
-            sxx = ((x - xmean) ** 2).sum()
-            syy = ((y - ymean) ** 2).sum()
-            sxy = ((x - xmean) * (y - ymean)).sum()
-            β1 = sxy / sxx
-            β0 = ymean - xmean * β1
-            r2 = sxy**2 / (sxx * syy)
-            s2 = (syy - β1**2 * sxx) / (n - 2)
-            f = β1**2 * sxx / s2
-            se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
-            se_β1 = (s2 / sxx).sqrt()
-            return pl.struct(
-                n.alias("n"),
-                xmean.alias("xmean"),
-                sxx.alias("sxx"),
-                β0.alias("β0"),
-                β1.alias("β1"),
-                r2.alias("r2"),
-                s2.alias("s2"),
-                f.alias("f"),
-                se_β0.alias("se_β0"),
-                se_β1.alias("se_β1"),
-            )
 
 
     mo.show_code()
@@ -334,7 +315,7 @@ def _(alt, col, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, html, md, mo):
+def _(Regression, html, md, mo):
     mo.md(
         rf"""
     ### Ex 10.4
@@ -344,12 +325,7 @@ def _(df_ex, html, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(4)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                        container_height="50vh",
-                    )
+                    Regression.gt(4)
                     .tab_header(
                         title="Old Faithful Eruptions: Duration and Time Between Eruptions (in min.)"
                     )
@@ -378,7 +354,7 @@ def _(df_ex, html, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=4, x="LAST", y="NEXT")
+    _r = Regression(dnum=4, x_label="LAST", y_label="NEXT")
 
     mo.md(
         rf"""
@@ -412,7 +388,7 @@ def _(Regression, mo, np):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         f"""
     ### Ex 10.5
@@ -422,12 +398,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(5)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                        container_height="50vh",
-                    )
+                    Regression.gt(5)
                     .cols_align("center")
                     .tab_header(
                         title="Men's Olympic Triple Jump Winning Distance (in meters)"
@@ -448,7 +419,7 @@ def _(df_ex, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=5, x="Year", y="Distance")
+    _r = Regression(dnum=5, x_label="Year", y_label="Distance")
 
     # _scatter = _df.with_columns(pl.col("Year").cast(int).cast(str)).plot.scatter(
     #     alt.X("Year:T"),
@@ -479,7 +450,7 @@ def _(Regression, mo, np):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         f"""
     ### Ex 10.6
@@ -489,11 +460,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(6)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="50%",
-                    )
+                    Regression.gt(6)
                     .cols_align("center")
                     .tab_header(title="Boiling Point of Water in the Alps")
                     .tab_source_note(
@@ -511,7 +478,7 @@ def _(df_ex, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=6, x="Pressure", y="Temp")
+    _r = Regression(dnum=6, x_label="Pressure", y_label="Temp")
 
     mo.md(
         rf"""
@@ -538,7 +505,7 @@ def _(Regression, mo, np):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.7
@@ -548,11 +515,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(7)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                    )
+                    Regression.gt(7)
                     .cols_align("center")
                     .tab_header(
                         title="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)"
@@ -573,7 +536,7 @@ def _(df_ex, md, mo):
 
 @app.cell(hide_code=True)
 def _(Regression, mo, np):
-    _r = Regression(dnum=7, x="Year", y="Time")
+    _r = Regression(dnum=7, x_label="Year", y_label="Time")
 
     mo.md(
         rf"""
@@ -749,7 +712,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=5, x="Year", y="Distance")
+    _r = RegressionInference(dnum=5, x_label="Year", y_label="Distance")
     _pval, _t = _r.slopeTest(alternative="greater")
     [_l, _h] = _r.estimateInterval(2004, kind="PI")
 
@@ -783,7 +746,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=6, x="Pressure", y="Temp")
+    _r = RegressionInference(dnum=6, x_label="Pressure", y_label="Temp")
     [_l, _h] = _r.estimateInterval(28, kind="CI")
 
     mo.output.append(
@@ -824,7 +787,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=4, x="LAST", y="NEXT")
+    _r = RegressionInference(dnum=4, x_label="LAST", y_label="NEXT")
     [_l, _h] = _r.estimateInterval(3, kind="PI")
 
     mo.output.append(
@@ -877,7 +840,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(RegressionInference, mo):
-    _r = RegressionInference(dnum=7, x="Year", y="Time")
+    _r = RegressionInference(dnum=7, x_label="Year", y_label="Time")
     [_l, _h] = _r.estimateInterval(2004, kind="PI")
     _x = _r.predict(y=60)
 
@@ -898,7 +861,7 @@ def _(RegressionInference, mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.13
@@ -908,11 +871,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(13)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                    )
+                    Regression.gt(13)
                     .cols_align("center")
                     .fmt_integer(columns="Year", use_seps=False)
                     .tab_source_note(
@@ -1055,80 +1014,65 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, dataclass, get_source, linreg, mo, pl):
-    @dataclass
-    class linregChartResult:
-        n: int | None = None
-        β0: float | None = None
-        β1: float | None = None
-        r2: float | None = None
-        s2: float | None = None
-        f: float | None = None
-        se_β0: float | None = None
-        se_β1: float | None = None
-        se_est_ci: float | None = None
-        se_est_pi: float | None = None
-        chart_ls: alt.Chart | None = None
-        chart_err: alt.Chart | None = None
+def _(mo):
+    mo.md(r"""Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways.""")
+    return
 
 
-    def linreg_chart(
-        df: pl.dataframe, x_title: str = "x", y_title: str = "y"
-    ) -> linregChartResult:
-        """
-        Draw charts related to diagnostics of simple linear regression.
-        Also returns LS fit statistics.
+@app.cell
+def _(Regression, alt, mo, pl):
+    class RegressionDiagnosis(Regression):
+        def transform(
+            self,
+            x_transform: pl.Expr | None = None,
+            x_label: str = "x_transformed",
+            y_transform: pl.Expr | None = None,
+            y_label: str = "y_transformed",
+        ) -> None:
+            if x_transform is not None:
+                self._x_name, self._x_title = self._parseLabel(x_label)
+                self.df = self.df.with_columns(x_transform.alias(self._x_name))
+            if y_transform is not None:
+                self._y_name, self._y_title = self._parseLabel(y_label)
+                self.df = self.df.with_columns(y_transform.alias(self._y_name))
+            if not (x_transform is None and y_transform is None):
+                self._calc()
 
-        input:
-        - df: polars dataframe. assumes existence of "x" and "y" columns.
-        - x/y_title: the axis titles to display
+        def _chart_residual(self) -> alt.Chart:
+            scatter = self.df.plot.circle(
+                x=alt.X(self._x_name)
+                .title(self._x_title)
+                .scale(zero=False, padding=10)
+                .axis(grid=False),
+                y=alt.Y("residual").scale(zero=False, padding=10),
+            ).properties(title="residual plot")
+            fill = self.df.plot.rule(
+                x=self._x_name,
+                y=alt.Y("y0").title(None),
+                y2="residual",
+                size=alt.value(0.2),
+            )
+            axis = self.df.plot.rule(y="y0")
 
-        output: A linregChartResult object having fields:
-        - chart_ls: chart showing the LS regression line with data points
-        - chart_err: chart showing the fit residuals.
-        - β0, β1 ...: LS fit statistics returned by `linreg()`
-        """
-        r = df.select(linreg(pl.col("x"), pl.col("y"))).item()
-        r = linregChartResult(**r)
-        scatter = df.plot.scatter(
-            x=alt.X("x").title(x_title).scale(zero=False, padding=10),
-            y=alt.Y("y").title(y_title).scale(zero=False, padding=10),
-        ).properties(title=f"LS fit:  β0 = {r.β0:.3g}, β1 = {r.β1:.3g}")
-        line = scatter.transform_regression("x", "y").mark_line(color="red")
-        r.chart_ls = scatter + line
+            return scatter + fill + axis
 
-        error_df = df.with_columns(
-            e=pl.col("y") - (r.β0 + r.β1 * pl.col("x")), y0=0
-        )
-        error = error_df.plot.circle(
-            x=alt.X("x")
-            .title(x_title)
-            .scale(zero=False, padding=10)
-            .axis(grid=False),
-            y=alt.Y("e").title("error").scale(zero=False, padding=10),
-        ).properties(title="residuals")
-        fill = error_df.plot.rule(x="x", y="y0", y2="e", size=alt.value(0.2))
-        axis = error_df.plot.rule(y="y0")
-        r.chart_err = error + fill + axis
+        def _chart_normal(self) -> alt.Chart:
+            pass
 
-        return r
+        def chart(self, kind: str = "residual") -> alt.Chart:
+            match kind:
+                case "residual":
+                    chart = self._chart_residual()
+                case "normal":
+                    chart = self._chart_normal()
+                case _:
+                    chart = super().chart(kind=kind)
+
+            return chart
 
 
-    mo.ui.tabs(
-        {
-            "Theory": mo.md(
-                r"""
-    Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways."""
-            ),
-            "Implementation": mo.md(
-                f"""
-    Here we define a helper function to draw the diagnostic charts.
-
-    {get_source(linreg_chart)}"""
-            ),
-        }
-    )
-    return (linreg_chart,)
+    mo.show_code()
+    return (RegressionDiagnosis,)
 
 
 @app.cell(hide_code=True)
@@ -1164,7 +1108,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.16
@@ -1174,11 +1118,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(16)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="70%",
-                    )
+                    Regression.gt(16)
                     .cols_align("center")
                     .fmt_integer(columns="Primes")
                     .tab_source_note(
@@ -1195,9 +1135,9 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, mo, pl):
+def _(Regression, alt, mo, pl):
     _df = (
-        df_ex(16)
+        Regression.ex(16)
         .with_columns(x=10.0 ** pl.col("x").str.extract("\\^(\\d+)").cast(int))
         .with_columns(
             h1=10000 / pl.col("x"),
@@ -1233,7 +1173,7 @@ def _(alt, df_ex, mo, pl):
 
     Because $p(x) \to 0$ as $\textrm{h3} \to 0$, it's appropriate to assume $\beta_0 = 0$ and use _regression through the origin_ (Exercise 8) to calculate """
         rf"""
-    $$\hat{{\beta}}_1 = {_β1:.4f} \approx \log_{{10}}e = 0.4343.$$
+    $$\hat{{\beta}}_1 = {_β1:.4g} \approx \log_{{10}}e = 0.4343.$$
     ///
     """
         r"""
@@ -1245,14 +1185,13 @@ def _(alt, df_ex, mo, pl):
     &\approx \frac{\log_{10}e}{{\log_{10}x}} \\
     &=  \frac{1}{\log_e x}.
     \end{align*}$$
-    ///
-    """
+    ///"""
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.17
@@ -1262,9 +1201,8 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(17)
-                    .style.tab_options(
-                        table_font_size=12,
+                    Regression.gt(17)
+                    .tab_options(
                         table_width="50%",
                     )
                     .cols_align("center")
@@ -1284,45 +1222,38 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, np, pl):
-    _df = df_ex(17).with_columns(h=pl.col("t").log())
-
-    _res = _df.select(linreg(pl.col("h"), pl.col("P"))).item()
-    _β0, _β1 = _res["β0"], _res["β1"]
-
-    _scatter = _df.plot.scatter(
-        alt.X("h").title("h = ln t"), alt.Y("P").title("p")
-    )
-    _line = _scatter.transform_regression("h", "P").mark_line(color="red")
+def _(RegressionDiagnosis, col, mo, np):
+    _r = RegressionDiagnosis(dnum=17, x_label="t", y_label="P:p")
+    _r.transform(x_transform=col("t").log(), x_label="h:ln(t)")
 
     mo.md(
         r"""
     /// details | (a) Note that $t$ increases almost geometrically throughout. This suggests that a logarithmic transformation of $t$ might linearize the relationship. Plot $p$ vs. $\ln{t}$. Is the relationship approximately linear?
 
     """
-        rf"""{mo.ui.altair_chart(_scatter)}
+        rf"""{mo.as_html(_r.chart("scatter"))}
 
     Yes. The relationship appears approximately linear.
     ///
 
     /// details | (b) Fit a trend line to the plot in (a). From the trend line estimate the time for 50% retention.
 
-    The trend line is $\hat p = {_β0:.3f} - {abs(_β1):.3f}h$.
+    The trend line is $\hat p = {_r.β0:.3g} - {abs(_r.β1):.3g}h$.
 
-    {mo.ui.altair_chart(_line + _scatter)}
+    {mo.as_html(_r.chart("regression"))}
 
     """
         r"""
-    Because $p = \beta_0 + \beta_1\;\ln{t}$, $t=\exp{\frac{p-\beta_0}{\beta_1}}$.
+    Because $p = \beta_0 + \beta_1\;\ln{t}$, $t=\exp{[(p-\beta_0)/\beta_1]}$.
     """
-        rf""" For p = 50% retention, $t = {np.exp((0.5 - _β0) / _β1).item():.1f}$ minutes.
+        rf""" For p = 50% retention, $t = {np.exp((0.5 - _r.β0) / _r.β1):.4g}$ minutes.
     """
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(df_ex, html, md, mo):
+def _(Regression, html, md, mo):
     mo.md(
         rf"""
     ### Ex 10.18
@@ -1332,11 +1263,7 @@ def _(df_ex, html, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(18)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="70%",
-                    )
+                    Regression.gt(18)
                     .cols_align("center")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="Planet No.")
@@ -1356,17 +1283,9 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, np, pl):
-    _df = df_ex(18).with_columns(h=pl.col("Dist").log())
-
-    _scatter = _df.plot.scatter(
-        alt.X("No").scale(domain=[0, 11]).title("x=Planet No."),
-        alt.Y("h").scale(domain=[3, 9]).title("h=ln(Distance)"),
-    )
-    _line = _scatter.transform_regression("No", "h").mark_line(color="red")
-
-    _res = _df.select(linreg(pl.col("No"), pl.col("h"))).item()
-    _β0, _β1 = _res["β0"], _res["β1"]
+def _(RegressionDiagnosis, col, mo, np):
+    _r = RegressionDiagnosis(dnum=18, x_label="No:Planet No.", y_label="Dist")
+    _r.transform(y_transform=col("Dist").log(), y_label="h:ln(Distance)")
 
     mo.md(
         rf"""
@@ -1374,21 +1293,21 @@ def _(alt, df_ex, linreg, mo, np, pl):
 
     The distances seem to increase exponentially with the planet number at a factor of 1.5 - 2. Therefore we take the logarithm of the distances.
 
-    {mo.as_html(_scatter)}
+    {mo.as_html(_r.chart("scatter"))}
 
     Yeah, the transformation appears to give a linear relationship.
     ///
 
     /// details | (b) Fit a least squares straight line after linearizing the relationship.
 
-    By `linreg`, the least squares line is $h = {_β0:.3f} + {_β1:.2f}\;x$.
+    The least squares line is $h = {_r.β0:.3g} + {_r.β1:.3g}\;x$.
 
-    {mo.ui.altair_chart(_line + _scatter)}
+    {mo.as_html(_r.chart("regression"))}
     ///
 
     /// details | (c) It is speculated that there is a planet beyond Pluto, called Planet X. Predict its distance from the sun.
 
-    $h^*={_β0:.3f} + {_β1:.2f} \cdot 11 = {_β0 + _β1 * 11:.3f}$. So distance = $\exp{{(h^*)}}$ = {np.exp(_β0 + _β1 * 11).item():.1f} millions of miles.
+    $h^*={_r.β0:.3g} + {_r.β1:.3g} \cdot 11 = {_r.predict(x=11):.3f}$. So distance = $\exp{{(h^*)}}$ = {np.exp(_r.predict(x=11)):.0f} millions of miles.
     ///
     """
     )
@@ -1396,7 +1315,7 @@ def _(alt, df_ex, linreg, mo, np, pl):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, html, mo):
+def _(Regression, html, mo):
     mo.md(
         rf"""
     ### Ex 10.19
@@ -1406,10 +1325,7 @@ def _(df_ex, html, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(19)
-                    .style.tab_options(
-                        table_font_size=12,
-                    )
+                    Regression.gt(19)
                     .cols_align("center")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="Planet No.")
@@ -1430,17 +1346,9 @@ def _(df_ex, html, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, mo, pl):
-    _df = df_ex(19).with_columns(h=1 / pl.col("Speed") ** 2)
-
-    _scatter = _df.plot.scatter(
-        alt.X("Distan", title="distance"),
-        alt.Y("h", title="h=speed^(-2)", axis=alt.Axis(format="g")),
-    )
-
-    _β1 = _df.select(
-        (pl.col("Distan") * pl.col("h")).sum() / (pl.col("Distan") ** 2).sum()
-    ).item()
+def _(RegressionDiagnosis, col, mo):
+    _r = RegressionDiagnosis(dnum=19, x_label="Distan:distance", y_label="Speed:speed")
+    _r.transform(y_transform=1/col("Speed")**2, y_label="h:1/speed²")
 
     mo.md(
         r""" 
@@ -1450,16 +1358,16 @@ def _(alt, df_ex, mo, pl):
     So the transformation we are looking for is $h = 1/\textrm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
     """
         rf"""
-    {mo.as_html(_scatter)}
+    {mo.as_html(_r.chart("scatter"))}
 
-    To fit this linear relationship, we should force $\beta_0 = 0$ and use _regression through the origin_. $\hat{{\beta}}_1$ = {_β1:.2e}.
+    To fit this linear relationship, we should force $\beta_0 = 0$ and use _regression through the origin_. $\hat{{\beta}}_1$ = {_r.rto:.3g}.
     """
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(df_ex, html, md, mo):
+def _(Regression, html, mo):
     mo.md(
         rf"""
     ### Ex 10.20
@@ -1469,22 +1377,13 @@ def _(df_ex, html, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(20)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                    )
+                    Regression.gt(20)
                     .cols_align("center")
                     .cols_label(
                         x=html("Speed x<br>(mph)"),
                         y=html("Stop. Dist. y<br>(ft)"),
                     )
                     .fmt_integer(columns="x")
-                    .tab_source_note(
-                        source_note=md(
-                            "This exercise is based on Example 2A. Ch. 12 of F. Mosteller, S. E. Fienberg and R. E. K. Rourke. _op. cit._"
-                        )
-                    )
                 )
             )
         }
@@ -1494,9 +1393,8 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, linreg_chart, mo, pl, stats):
-    _df = df_ex(20)
-    _r = linreg_chart(_df, x_title="speed", y_title="stop distance")
+def _(RegressionDiagnosis, col, mo, stats):
+    _r = RegressionDiagnosis(dnum=20, x_label="x:speed", y_label="y:stop distance")
     _pval = stats.f.sf(_r.f, 1, _r.n - 2)
 
     mo.output.append(
@@ -1504,12 +1402,12 @@ def _(df_ex, linreg_chart, mo, pl, stats):
             rf"""
     /// details | (a) Fit an LS straight line to these data. Plot the residuals against the speed.
 
-    {mo.as_html(_r.chart_ls | _r.chart_err)}
+    {mo.as_html(_r.chart("regression") | _r.chart("residual"))}
     ///
 
     /// details | (b) Comment on the goodness of the fit based on the overall $F$-statistic and the residual plot. Which two assumptions of the linear regression model seem to be violated?
 
-    The $F$-statistic is {_r.f:.2f} with $P$-value = {_pval:.2e}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
+    The $F$-statistic is {_r.f:.3g} with $P$-value = {_pval:.3g}, showing that the trend clearly has a significant linear component. However, the residual plot reveals that two assumptions seem to be violated: (1) linearity - a systematic, parabolic pattern indicates the regression does not fit the data adequately; and (2) constant variance - the error variance seem to get bigger with $x$.
     ///
 
     /// details | (c) Based on the residual plot, what transformation of stopping distance should be used to linearize the relationship with respect to speed? A clue to find this transformation is provided by the following engineering argument: In bringing a car to a stop, its kinetic energy is dissipated as its braking energy, and the two are roughly equal. The kinetic energy is proportional to the square of the car's speed, while the braking energy is proportional to the stopping distance, assuming a constant braking force.
@@ -1520,21 +1418,20 @@ def _(df_ex, linreg_chart, mo, pl, stats):
         )
     )
 
-    _df = _df.with_columns(pl.col("y").sqrt())
-    _r = linreg_chart(_df, x_title="speed", y_title="√distance")
+    _r.transform(y_transform=col("y").sqrt(), y_label="h:√distance")
     _pval = stats.f.sf(_r.f, 1, _r.n - 2)
-    _y = (_r.β0 + _r.β1 * 40) ** 2
+    _y = _r.predict(x=40) ** 2
 
     mo.output.append(
         mo.md(
             rf"""
     /// details | (d) Make this linearizing transformation and check the goodness of fit. What is the predicted stopping distance according to this model if the car is traveling at 40 mph?
 
-    {mo.as_html(_r.chart_ls | _r.chart_err)}
+    {mo.as_html(_r.chart("regression") | _r.chart("residual"))}
 
-    The $F$-statistic is {_r.f:.2f} with $P$-value = {_pval:.2e}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
+    The $F$-statistic is {_r.f:.3g} with $P$-value = {_pval:.3g}, again showing significant linearity. This time, the residual plot has improved considerably confirming that it is a good fit.
 
-    The stopping distance of a car traveling at 40 mph would be $y = h^2 = ({_r.β0:.2f} +  {_r.β1:.2f} \cdot 40)^2$ = {_y:.2f} feet.
+    The stopping distance of a car traveling at 40 mph would be $y = h^2 = ({_r.β0:.3g} +  {_r.β1:.3g} \cdot 40)^2$ = {_y:.3g} feet.
     ///
     """
         )
@@ -1543,7 +1440,7 @@ def _(df_ex, linreg_chart, mo, pl, stats):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, html, md, mo):
+def _(Regression, html, md, mo):
     mo.md(
         rf"""
     ### Ex 10.21
@@ -1553,12 +1450,7 @@ def _(df_ex, html, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(21)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="40%",
-                        container_height="50vh",
-                    )
+                    Regression.gt(21)
                     .cols_align("center")
                     .cols_label(
                         mph=html("Wind Velocity<br>(mph)"),
@@ -1578,22 +1470,14 @@ def _(df_ex, html, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, linreg_chart, mo, pl):
-    _df = df_ex(21)
-    _scatter = _df.plot.scatter(x="mph", y="amps")
-    _r = linreg_chart(
-        _df.select(pl.col("mph").alias("x"), (pl.col("amps") ** 3).alias("y")),
-        x_title="mph",
-        y_title="amps^3",
-    )
-
-    _y = _r.β0 + _r.β1 * 8
+def _(RegressionDiagnosis, mo):
+    _r = RegressionDiagnosis(dnum=21, x_label="mph:wind velocity", y_label="amps:DC output")
 
     mo.md(
         rf"""
-    /// details | (a) Make a scatter plot of the DC output vs. wind velocity. Describe the relationship. Refer to Figure 10.10. Find a transformation that linearizes the relationship. Fit the LS line.
+    /// details | (a) Make a scatter plot of the DC output vs. wind velocity. Describe the relationship. Find a transformation that linearizes the relationship. Fit the LS line.
 
-    {mo.as_html(_scatter)}
+    {mo.as_html(_r.chart("scatter"))}
 
     The scatter plot shows that the DC output increases with the wind velocity, but the increase gradually peters out. Let's take the transformation $y \to y^3$ and fit the LS line.
 
@@ -1618,7 +1502,7 @@ def _(df_ex, linreg_chart, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.22
@@ -1628,10 +1512,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(22)
-                    .style.tab_options(
-                        table_font_size=12,
-                    )
+                    Regression.gt(22)
                     .cols_align("center")
                     .tab_stub(rowname_col="No")
                     .tab_stubhead(label="No.")
@@ -1650,9 +1531,9 @@ def _(df_ex, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, df_ex, linreg, mo, pl):
+def _(Regression, alt, linreg, mo, pl):
     _df = (
-        df_ex(22)
+        Regression.ex(22)
         .select(
             "No",
             x1y1=pl.struct(x="x1", y="y1"),
@@ -1723,7 +1604,7 @@ def _(alt, df_ex, linreg, mo, pl):
 
 
 @app.cell(hide_code=True)
-def _(df_ex, md, mo):
+def _(Regression, md, mo):
     mo.md(
         rf"""
     ### Ex 10.23
@@ -1733,11 +1614,7 @@ def _(df_ex, md, mo):
     {
             mo.center(
                 mo.as_html(
-                    df_ex(23)
-                    .style.tab_options(
-                        table_font_size=12,
-                        table_width="60%",
-                    )
+                    Regression.gt(23)
                     .cols_align("center")
                     .tab_stub(rowname_col="Mammal")
                     .tab_stubhead(label="Mammal")
