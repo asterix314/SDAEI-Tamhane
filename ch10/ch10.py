@@ -1834,7 +1834,7 @@ def _(mo):
         r"""
     ### Ex 10.26
 
-    In equation (10.29), the following _arctan hyperbolic transformation_ of the sample correlation coefficient $R$ is used to achieve approximate normality of its sampling distribution: $$\tanh^{-1}R=\frac{1}{2}\log_e\left(\frac{1+R}{1-R}\right).$$ Show that this is an approximate variance stabilizing transformation by using the results that $\textrm E(R) \simeq \rho$ and $\textrm{Var}(R) \simeq (1-\rho^2)^2$, where $\rho$ is the population correlation coefficient.
+    In equation (10.29), the following _arctan hyperbolic transformation_ of the sample correlation coefficient $R$ is used to achieve approximate normality of its sampling distribution: $$\operatorname{arctanh}R=\frac{1}{2}\log_e\left(\frac{1+R}{1-R}\right).$$ Show that this is an approximate variance stabilizing transformation by using the results that $\textrm E(R) \simeq \rho$ and $\textrm{Var}(R) \simeq (1-\rho^2)^2$, where $\rho$ is the population correlation coefficient.
     """
     )
     return
@@ -1842,7 +1842,15 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(rf"""todo""")
+    mo.md(
+        r"""
+    $$\begin{align*}
+    \operatorname{Var}[\operatorname{arctanh}R] &= (\operatorname{arctanh}'\operatorname E(R))^2\,\text{Var}[R] \\
+    &\simeq (\operatorname{arctanh}'\rho)^2 (1-\rho^2)^2 \\
+    &= 1.
+    \end{align*}$$
+    """
+    )
     return
 
 
@@ -1853,6 +1861,23 @@ def _(mo):
     ### Ex 10.27
 
     The _inverse transformation_, $h(y) = 1 / y$, is also common in practice. To use this transformation how must $\textrm{Var}(Y)$ be related to $\textrm E(Y)$?
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    Let $\operatorname E(Y) = \mu$. For the inverse transformation to be variance stabilizing, it should hold that
+
+    $$
+    \operatorname{Var}h(Y) = h'(\mu)^2 \operatorname{Var}(Y) = \frac{1}{\mu^4} \operatorname{Var}(Y) = c.
+    $$
+
+    where $c$ is a constant. Therefore $\operatorname{Var}(Y) = c\,\mu^4$.
+
     """
     )
     return
