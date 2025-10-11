@@ -270,13 +270,11 @@ def _(GT, alt, col, mo, pl, stderr):
             x: str | None = None,
             y: str | None = None,
         ) -> alt.Chart:
-            x_name, x_title = (
-                self._x_name,
-                self._x_title if x is None else self._parse(x),
+            [x_name, x_title] = (
+                [self._x_name, self._x_title] if x is None else self._parse(x)
             )
-            y_name, y_title = (
-                self._y_name,
-                self._y_title if x is None else self._parse(x),
+            [y_name, y_title] = (
+                [self._y_name, self._y_title] if x is None else self._parse(y)
             )
 
             match kind:
@@ -1047,6 +1045,7 @@ def _(mo):
 def _(RegressionInference, alt, col, mo, pl):
     from copy import deepcopy
 
+
     class RegressionDiagnosis(RegressionInference):
         def _calc(self, x: str, y: str) -> None:
             """add residual and y0=0 columns"""
@@ -1065,7 +1064,7 @@ def _(RegressionInference, alt, col, mo, pl):
             y: str | None = None,
         ) -> "RegressionDiagnosis":
             r = deepcopy(self)
-        
+
             if x_transform is not None:
                 x_name, _ = r._parse(x) if x else r._x_name
                 r.df = r.df.with_columns(x_transform.alias(x_name))
@@ -1074,7 +1073,7 @@ def _(RegressionInference, alt, col, mo, pl):
                 r.df = r.df.with_columns(y_transform.alias(y_name))
             if not (x_transform is None and y_transform is None):
                 r._calc(x, y)
-            
+
             return r
 
         def _chart_residual(self) -> alt.Chart:
@@ -1279,17 +1278,18 @@ def _(Regression, md, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo, np):
-    _r = RegressionDiagnosis(dnum=17, x="t", y="P:p")
-    _r = _r.transform(x_transform=col("t").log(), x="h:ln(t)")
+    _r = RegressionDiagnosis(dnum=17, x="t", y="P:p").transform(
+        x_transform=col("t").log(), x="x:ln(t)"
+    )
 
     mo.md(
         r"""
     /// details | (a) Note that $t$ increases almost geometrically throughout. This suggests that a logarithmic transformation of $t$ might linearize the relationship. Plot $p$ vs. $\ln{t}$. Is the relationship approximately linear?
 
     """
-        rf"""{mo.as_html(_r.chart("scatter"))}
+        rf"""{mo.as_html(_r.chart("scatter", x="t", y="P:p") | _r.chart("scatter"))}
 
-    Yes. The relationship appears approximately linear.
+    Yes. The transformed relationship appears approximately linear.
     ///
 
     /// details | (b) Fit a trend line to the plot in (a). From the trend line estimate the time for 50% retention.
@@ -1340,8 +1340,9 @@ def _(Regression, html, md, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo, np):
-    _r = RegressionDiagnosis(dnum=18, x="No:Planet No.", y="Dist")
-    _r = _r.transform(y_transform=col("Dist").log(), y="h:ln(Distance)")
+    _r = RegressionDiagnosis(dnum=18, x="No:Planet No.", y="Dist").transform(
+        y_transform=col("Dist").log(), y="y:ln(Distance)"
+    )
 
     mo.md(
         rf"""
@@ -1349,21 +1350,21 @@ def _(RegressionDiagnosis, col, mo, np):
 
     The distances seem to increase exponentially with the planet number at a factor of 1.5 - 2. Therefore we take the logarithm of the distances.
 
-    {mo.as_html(_r.chart("scatter"))}
+    {mo.as_html(_r.chart("scatter", x="No:Planet No.", y="Dist:Distance") | _r.chart("scatter"))}
 
     Yeah, the transformation appears to give a linear relationship.
     ///
 
     /// details | (b) Fit a least squares straight line after linearizing the relationship.
 
-    The least squares line is $h = {_r.β0:.4g} + {_r.β1:.4g}\;x$.
+    The least squares line is $y = {_r.β0:.4g} + {_r.β1:.4g}\;x$.
 
     {mo.as_html(_r.chart("regression"))}
     ///
 
     /// details | (c) It is speculated that there is a planet beyond Pluto, called Planet X. Predict its distance from the sun.
 
-    $h^*={_r.β0:.4g} + {_r.β1:.4g} \cdot 11 = {_r.predict(x=11):.4g}$. So distance = $\exp{{(h^*)}}$ = {np.exp(_r.predict(x=11)):.0f} millions of miles.
+    $y^*$={_r.β0:.4g} + {_r.β1:.4g} × 11 = {_r.predict(x=11):.4g}. So distance = $\exp{{(y^*)}}$ = {np.exp(_r.predict(x=11)):.0f} millions of miles.
     ///"""
     )
     return
@@ -1402,18 +1403,19 @@ def _(Regression, html, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo):
-    _r = RegressionDiagnosis(dnum=19, x="Distan:distance", y="Speed:speed")
-    _r = _r.transform(y_transform=1/col("Speed")**2, y="h:1/speed²")
+    _r = RegressionDiagnosis(
+        dnum=19, x="Distan:distance", y="Speed:speed"
+    ).transform(y_transform=1 / col("Speed") ** 2, y="y:1/speed²")
 
     mo.md(
         r""" 
     Highschool physics tells us that a planet orbiting the sun at distance $R$ and speed $v$ will have centripetal acceleration $g = v^2/R$, which is provided by gravity $g = GM/R^2$. Therefore 
     $$R = \frac{GM}{v^2}.$$
 
-    So the transformation we are looking for is $h = 1/\textrm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
+    So the transformation we are looking for is $y = 1/\textrm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
     """
         rf"""
-    {mo.as_html(_r.chart("scatter"))}
+    {mo.as_html(_r.chart("scatter", x="Distan:distance", y="Speed:speed") | _r.chart("scatter"))}
 
     To fit this linear relationship, we should force $\beta_0 = 0$ and use _regression through the origin_. $\hat{{\beta}}_1$ = {_r.rto:.4g}.
     """
@@ -1524,31 +1526,29 @@ def _(Regression, html, md, mo):
 
 @app.cell(hide_code=True)
 def _(RegressionDiagnosis, col, mo):
-    _r = RegressionDiagnosis(dnum=21, x="mph:wind velocity", y="amps:DC output")
-
-    _s = _r.transform(x_transform=1 / col("mph"), x="h:1/velocity")
+    _r = RegressionDiagnosis(dnum=21, x="mph", y="amps:DC output").transform(
+        x_transform=1 / col("mph"), x="x:1/velocity"
+    )
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the DC output vs. wind velocity. Describe the relationship. Find a transformation that linearizes the relationship. Fit the LS line.
 
-    {mo.as_html(_r.chart("scatter"))}
+    {mo.as_html(_r.chart("scatter", x="mph:wind velocity", y="amps:DC output") | _r.chart("regression"))}
 
     The scatter plot shows that the DC output increases with the wind velocity, but the increase gradually peters out. Let's take the transformation $x \to 1/x$ and fit the LS line.
-
-    {mo.as_html(_s.chart("regression"))}
     ///
 
     ///details | (b) Check the goodness of fit by making residual plots. Do the assumptions of linear regression seem to be satisfied?
 
-    {mo.as_html(_s.chart("residual"))}
+    {mo.as_html(_r.chart("residual"))}
 
-    The $F$-statistic = {_s.f:.4g} indicating there's a significant linear relationship, and the residual plot appears to be normal. So yes, the assumptions of linear regression are satisfied.
+    The $F$-statistic = {_r.f:.4g} indicating there's a significant linear relationship, and the residual plot appears to be normal. So yes, the assumptions of linear regression are satisfied.
     ///
 
     /// details | (c) What is the predicted output if the wind velocity is 8 mph?
 
-    According to this model, the DC output at wind velocity = 8 mph would be {_s.predict(x=1 / 8):.4g} amps. 
+    According to this model, the DC output at wind velocity = 8 mph would be {_r.predict(x=1 / 8):.4g} amps. 
     ///"""
     )
     return
@@ -1690,14 +1690,10 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, col, df_ex, linreg_chart, mo, np):
-    _df = df_ex(23).select(col("kg").alias("x"), col("days").log().alias("y"))
-    _scatter = _df.plot.scatter(
-        x=alt.X("x").scale(zero=False, padding=10).title("weight"),
-        y=alt.Y("y").scale(zero=False, padding=10).title("log(gestation time)"),
+def _(RegressionDiagnosis, col, mo, np):
+    _r = RegressionDiagnosis(dnum=23, x="kg:weight", y="days").transform(
+        y_transform=col("days").log(), y="y:log(gestation time)"
     )
-    _r = linreg_chart(_df, x_title="weight", y_title="log(gestation time)")
-    _y = _r.β0 + _r.β1 * 1.2
 
 
     mo.md(
@@ -1711,21 +1707,20 @@ def _(alt, col, df_ex, linreg_chart, mo, np):
 
     /// details |  (b) Plot log(gestation time) vs. weight. Is this relationship approximately linear?
 
-    {mo.as_html(_scatter)}
+    {mo.as_html(_r.chart("scatter", x="kg:weight", y="days:gestation time") | _r.chart("scatter"))}
 
-    Yes, the relationship is approximately linear.
+    Yes, the transformed relationship is approximately linear.
     ///
 
     /// details | (c) Fit the linear model $y = \beta_0 + \beta_1 w$ to the transformed data.
 
-    {mo.as_html(_r.chart_ls | _r.chart_err)}
+    {mo.as_html(_r.chart("regression") | _r.chart("residual"))}
     ///
 
     /// details | (d) Using the fitted model in (c), estimate the gestation time of a lion which weighs approximately 1.2 kg at birth.
 
-    $\log t = {_r.β0:.3g} + {_r.β1:.3g} \times 1.2 = {_y:.3g}$. So $t = \exp({_y:.3g}) = {np.exp(_y):.3g}$ days.
-    ///
-    """
+    $\log t$ = {_r.β0:.4g} + {_r.β1:.4g} × 1.2 = {_r.predict(x=1.2):.4g}. So $t = \exp({_r.predict(x=1.2):.4g})$ = {np.exp(_r.predict(x=1.2)):.4g} days.
+    ///"""
     )
     return
 
@@ -1758,15 +1753,13 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(alt, col, df_ex, linreg_chart, mo, np):
-    _df = df_ex(24).select(col("l").log().alias("x"), col("h").log().alias("y"))
-    _scatter = _df.plot.scatter(
-        x=alt.X("x").scale(zero=False, padding=10).title("log(days)"),
-        y=alt.Y("y").scale(zero=False, padding=10).title("log(cost)"),
+def _(RegressionDiagnosis, col, mo, np):
+    _r = RegressionDiagnosis(dnum=24, x="l", y="h").transform(
+        x_transform=col("l").log(),
+        x="x:log(days)",
+        y_transform=col("h").log(),
+        y="y:log(cost)",
     )
-    _r = linreg_chart(_df, x_title=("log(days)"), y_title="log(cost)")
-
-    _y = _r.β0 + _r.β1 * np.log(3)
 
     mo.md(
         rf"""
@@ -1779,20 +1772,87 @@ def _(alt, col, df_ex, linreg_chart, mo, np):
 
     /// details | (b) Plot $y = \log h$ vs. $x = \log l$. Is this relationship approximately linear?
 
-    {mo.as_html(_scatter)}
+    {mo.as_html(_r.chart("scatter", x="l:days", y="h:cost") | _r.chart("scatter"))}
 
-    Yes, the relationship is approximately linear.
+    Yes, the transformed relationship is approximately linear.
     ///
 
     /// details |  (c) Fit the linear model $y = \beta_0 + \beta_1 x$ to the transformed data.
 
-    {mo.as_html(_r.chart_ls | _r.chart_err)}
+    {mo.as_html(_r.chart("regression") | _r.chart("residual"))}
     ///
 
     /// details |  (d) Use the fitted model from (c) to estimate the average reimbursed cost for a 3-day hospital stay by an elderly person.
 
-    $\log h = {_r.β0:.3g} + {_r.β1:.3g} \times \log 3 = {_y:.3g}$. So $h = \exp({_y:.3g}) = {np.exp(_y):.0f}$ dollars.
+    $\log h$ = {_r.β0:.3g} + {_r.β1:.3g} × $\log 3$ = {_r.predict(x=np.log(3)):.4g}. So $h = \exp({_r.predict(x=np.log(3)):.4g})$ = {np.exp(_r.predict(x=np.log(3))):.0f} dollars.
+    ///"""
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""### Ex 10.25""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Recall that for a binomial proportion $p$ based on a sample of size $n$ we have $\textrm E(\hat p) = p$ and $\textrm{Var}(\hat p) = p(1 - p)/n$. Show that the variance stabilizing transformation for $\hat p$ is $$2\sqrt n\,\arcsin \sqrt{\hat p}.$$ This is the so-called _arcsin transformation_ for a binomial proportion. (_Hint_: $\int \frac{dx}{\sqrt{x(1-x)}} = 2\arcsin\sqrt x$)
+
+    The variance of the arcsin transformation $h(\hat p)=2\sqrt n\,\arcsin \sqrt{\hat p}$ is
+    $$\begin{align*}
+    \textrm{Var}[h(\hat p)] &= h'(p)^2\,\textrm{Var}(\hat p) \\
+    &=\left(\frac{\sqrt n}{\sqrt{p(1-p)}}\right)^2 \frac{p(1-p)}{n}  \quad \quad \triangleright\ \textrm{Take the Hint}\\
+    &=1,
+    \end{align*}$$
+    which shows that the transformation is variance stabilizing.
     ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Explain how you will use this transformation in the following problem: In a toxicological study $k$ doses, $x_1 < x_2 < \cdots < x_k$, of a chemical compound are evaluated for tumorogenicity by treating $n_i$ mice with dose $x_i \ (i = 1, 2, \ldots, k)$. Let $\hat p_i$ be the proportion of mice treated with dose level $x_i$ who developed tumors. It is desired to model the probability $p$ of developing a tumor as a function of the dose $x$ of the compound.
+
+    Suppose the model is $p(x)$. For each given dose $x_i$, the measured proportion $\hat p_i$ will have a non-constant variance around $p(x_i)$. Thus a variance stabilizing transformation described in (a) should first be applied on the $\hat p_i$s to generate $\hat h_i = 2\sqrt n\,\arcsin \sqrt{\hat p_i}$, and a model $h(x)$ is fitted on the transformed data points $(x_i, \hat h_i)$. Finally, a formula $p(x)$ is arrived at by inverting $h(p)$: $$p(x) = \sin^2 \frac{h(x)}{2\sqrt n}.$$
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.26
+
+    In equation (10.29), the following _arctan hyperbolic transformation_ of the sample correlation coefficient $R$ is used to achieve approximate normality of its sampling distribution: $$\tanh^{-1}R=\frac{1}{2}\log_e\left(\frac{1+R}{1-R}\right).$$ Show that this is an approximate variance stabilizing transformation by using the results that $\textrm E(R) \simeq \rho$ and $\textrm{Var}(R) \simeq (1-\rho^2)^2$, where $\rho$ is the population correlation coefficient.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(rf"""todo""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.27
+
+    The _inverse transformation_, $h(y) = 1 / y$, is also common in practice. To use this transformation how must $\textrm{Var}(Y)$ be related to $\textrm E(Y)$?
     """
     )
     return
