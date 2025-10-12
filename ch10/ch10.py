@@ -2073,6 +2073,57 @@ def _(CorrelationInference, mo, np):
 
 
 @app.cell(hide_code=True)
+def _(Regression, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.30
+
+    Times of U.K. male sprinters in 1988 for 200 meters and 100 meters without wind resistence are given in the following table.
+
+    {
+            mo.center(
+                mo.as_html(
+                    Regression.gt(30)
+                    .cols_align("center")
+                    .tab_stub(rowname_col="Athlete")
+                    .tab_stubhead(label="Athlete")
+                    .tab_spanner(label="Best Time (sec)", columns=["200m", "100m"])
+                    .tab_source_note(
+                        source_note=md("Source: The Open University (1993), _MDST242 Statistics in Society Unit A4: Relationships_, 2nd ed., Milton Keynes: The Open University, Table 2.1. Reprinted in _Small Data Sets_, p. 83."
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(CorrelationInference, mo, np):
+    _r = CorrelationInference(dnum=30, x="100m", y="200m")
+    _l, _h = _r.correlationInterval()
+    _pval, _ = _r.correlationTest(0.5, alternative="greater")
+
+    mo.md(
+        rf"""
+    /// details | (a) Make a scatter plot of the 200 m vs. 100 m times. Does there appear to be a strong or weak correlation? Explain.
+
+    {mo.as_html(_r.chart("scatter"))}
+
+    There seems to be a weak correlation, as the data points do not form a clear line; only the trend is somewhat increasing.
+    ///
+
+    /// details | (b) Calculate the correlation coefficient and a 95% confidence interval on $\rho$. Test if the correlation coefficient is significantly greater than 0.5.
+
+    The correlation coefficient $r$ = {np.sqrt(_r.r2):.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}]. The hypothesis $H_0: \rho \le 0.5$ is rejected with $P$-value = {_pval:.4g}, so yes, the correlation coefficient is significantly greater than 0.5
+    ///"""
+    )
+    return
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""## Advanced Exercises""")
     return
