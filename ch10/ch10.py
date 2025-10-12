@@ -653,13 +653,13 @@ def _(Regression, mo, np, stats):
 
 
     class RegressionInference(Regression):
-        class slopeTestResult(NamedTuple):
+        class TestResult(NamedTuple):
             pval: float
-            t: float
+            statistic: float
 
         def slopeTest(
             self, k: float = 0, alternative: str = "two-sided"
-        ) -> slopeTestResult:
+        ) -> TestResult:
             """
             returns (P-value, t-statistic) of observed data under H0: β1 = k
 
@@ -683,7 +683,7 @@ def _(Regression, mo, np, stats):
                     pval = stats.t.cdf(t, self.n - 2)
                 case _:
                     raise ValueError("unknown alternative value.")
-            return self.slopeTestResult(pval=pval, t=t)
+            return self.TestResult(pval=pval, statistic=t)
 
         def estimateInterval(
             self,
@@ -1037,7 +1037,15 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways.""")
+    mo.md(
+        r"""
+    Residuals are key to checking the model assumptions such as normality of the $Y_i$, linearity of the regression model, constant variance $\sigma^2$, and independence of the $Y_i$. Residuals are also useful for detecting _outliers_ and _influential observations_. Many of these diagnostic checks are done by plotting residuals in appropriate ways.
+
+    Sometimes it is possible to linearize the relationship between $x$ and $y$ by transforming either $x$ or $y$ or both. It is simpler to fit a straight line to transformed data than to fit a nonlinear model to raw data. 
+
+    Typically, the constant variance assumption is violated because $\operatorname{Var}(Y)$ is a function of $\operatorname E(Y) = \mu$, e.g. $g(\mu)^2$. The _delta method_ yields $$\operatorname{Var} h(Y) = h'(\mu)^2 \operatorname{Var}(Y) = h'(\mu)^2 g(\mu)^2,$$ giving $$h(y) = \int \frac{dy}{g(y)}.$$
+    """
+    )
     return
 
 
@@ -1903,6 +1911,67 @@ def _(mo):
     return
 
 
+@app.cell
+def _(RegressionInference, mo, np, stats):
+    class CorrelationInference(RegressionInference):
+        def correlationTest(
+            self, ρ: float = 0, alternative: str = "two-sided"
+        ) -> RegressionInference.TestResult:
+            """
+            Returns (P-value, statistic) of observed data under H0: correlation = ρ
+            If ρ = 0, returns the slope test restult, otherwise use Fisher's z-transform.
+
+            input:
+                - ρ: population correlation to compare with r. defaults to 0
+                - alternative:
+                    'two-sided': r ≠ ρ which is the default
+                    'less': r < ρ
+                    'greater': r > ρ
+
+            output:
+                a TestResult object containing the P-value and the statistic.
+            """
+            if ρ == 0.0:  # equivalent to test β1=0 of regression problem
+                return self.slopeTest(alternative=alternative)
+            else:  # Fisher's z-transform
+                z = np.arctanh(np.sqrt(self.r2))
+                dist = stats.norm(np.arctanh(ρ), 1 / np.sqrt(self.n - 3))
+                match alternative:
+                    case "two-sided":
+                        pval = 2 * dist.sf(abs(z))
+                    case "greater":
+                        pval = dist.sf(z)
+                    case "less":
+                        pval = dist.cdf(z)
+                    case _:
+                        raise ValueError("unknown alternative value.")
+
+            return self.TestResult(pval=pval, statistic=z)
+
+        def correlationInterval(
+            self,
+            α: float = 0.05,
+        ) -> list[float]:
+            """
+            Gives CI of the correlation coefficient based on Fisher's z-transform
+
+            Input:
+                - α: significance level, defaults to 0.05
+
+            Output:
+                the CI [low, high].
+            """
+            mu = np.arctanh(np.sqrt(self.r2))
+            dist = stats.norm(mu, 1 / np.sqrt(self.n - 3))
+            l, h = dist.ppf(α / 2), dist.ppf(1 - α / 2)
+
+            return [np.tanh(l), np.tanh(h)]
+
+
+    mo.show_code()
+    return (CorrelationInference,)
+
+
 @app.cell(hide_code=True)
 def _(Regression, md, mo):
     mo.md(
@@ -1931,81 +2000,74 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(ci, mo, pl, stats):
-    # _chart = _df.plot.scatter(
-    #     alt.X("Height").scale(domain=[130, 165]),
-    #     alt.Y("Weight").scale(domain=[20, 60]),
-    # )
+def _(CorrelationInference, mo, np):
+    _r = CorrelationInference(dnum=28, x="Height", y="Weight")
+    _pval, _ = _r.correlationTest(0.7, alternative="greater")
 
-    mo.output.append(
-        mo.md(
-            rf"""
+
+    mo.md(rf"""
     /// details | (a) Plot weights vs. heights.
 
-
+    {mo.as_html(_r.chart("scatter"))}
     ///
-    """
-        )
-    )
 
-
-    def corr_test(
-        x: pl.Expr, y: pl.Expr, alternative: str = "two-sided"
-    ) -> pl.Expr:
-        n = x.len()
-        r = pl.corr(x, y)
-        t = r * (n - 2).sqrt() / (1 - r**2).sqrt()
-        s = pl.struct(n.alias("n"), t.alias("t"))
-
-        match alternative:
-            case "two-sided":
-                res = s.map_batches(
-                    lambda s: 2
-                    * stats.t.sf(
-                        s.struct.field("t").abs(), s.struct.field("n") - 2
-                    ).item()
-                )
-            case "less":
-                res = s.map_batches(
-                    lambda s: stats.t.cdf(
-                        s.struct.field("t"), s.struct.field("n") - 2
-                    ).item()
-                )
-            case "greater":
-                res = s.map_batches(
-                    lambda s: stats.t.sf(
-                        s.struct.field("t"), s.struct.field("n") - 2
-                    ).item()
-                )
-        return res.alias("pval")
-
-
-    def corr_ci(
-        x: pl.Expr, y: pl.Expr, alternative: str = "two-sided", α: float = 0.05
-    ) -> pl.Expr:
-        r = pl.corr(x, y)
-        n = x.len()
-        match ci:
-            case "two-sided":
-                pass
-            case "greater":
-                pass
-            case "less":
-                pass
-
-
-    # _r = _df.select(pl.corr("Height", "Weight")).item()
-
-    mo.output.append(
-        mo.md(
-            rf"""
     /// details | (b) Calculate the correlation coefficient. Test if it is significantly greater than 0.7.
 
+    The correlation coefficient $r$ = {np.sqrt(_r.r2):.4g}. Set up the hypothesis $H_0: \rho \le 0.7$ and its $P$-value = {_pval:.4g}. So $r$ is not significantly greater than 0.7.
+    ///""")
+    return
 
+
+@app.cell(hide_code=True)
+def _(Regression, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.29
+
+    Counts of the numbers of finger ridges for 12 pairs of identical twins are given in the following table.
+
+    {
+            mo.center(
+                mo.as_html(
+                    Regression.gt(29)
+                    .cols_align("center")
+                    .tab_stub(rowname_col="Set")
+                    .tab_stubhead(label="Pair")
+                    .cols_label(
+                        Twin1="Twin 1",
+                        Twin2="Twin 2",
+                    )
+                    .fmt_integer(columns=["Set", "Twin1", "Twin2"])
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: H. H. Newman, F. Freeman, and K. J. Holzinger ( 1937). _Twins_, Chicago: University of Chicago Press. Reprinted in _Small Data Sets_, p. 309."
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(CorrelationInference, mo, np):
+    _r = CorrelationInference(dnum=29, x="Twin1:Twin 1", y="Twin2:Twin 2")
+    _l, _h = _r.correlationInterval()
+
+
+    mo.md(
+        rf"""
+    /// details | (a) Make a scatter plot of the ridges of Twin 2 vs. Twin 1.
+
+    {mo.as_html(_r.chart("scatter"))}
     ///
 
-    """
-        )
+    /// details | (b) Calculate the correlation coefficient and a 95% confidence interval on $\rho$.
+
+    The correlation coefficient $r$ = {np.sqrt(_r.r2):.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}].
+    ///"""
     )
     return
 
