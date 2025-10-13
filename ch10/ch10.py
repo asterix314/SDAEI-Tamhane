@@ -199,6 +199,7 @@ def _(GT, alt, col, mo, pl, stderr):
                 - β0/1: intercept/slope of regression line
                 - rto: slope of regression through the origin
                 - r2: coefficient of determination
+                - r: correlation coefficient
                 - s2: mean square error estimate of σ^2
                 - f: F statistic of H0: β1 = 0. f=t^2
                 - se_β0/1: standard error of β0/1
@@ -213,6 +214,7 @@ def _(GT, alt, col, mo, pl, stderr):
             β0 = ymean - xmean * β1
             rto = (x * y).sum() / (x**2).sum()
             r2 = sxy**2 / (sxx * syy)
+            r = sxy / (sxx * syy).sqrt()
             s2 = (syy - β1**2 * sxx) / (n - 2)
             f = β1**2 * sxx / s2
             se_β0 = (s2 * (x**2).sum() / (n * sxx)).sqrt()
@@ -225,6 +227,7 @@ def _(GT, alt, col, mo, pl, stderr):
                 β1.alias("β1"),
                 rto.alias("rto"),
                 r2.alias("r2"),
+                r.alias("r"),
                 s2.alias("s2"),
                 f.alias("f"),
                 se_β0.alias("se_β0"),
@@ -1885,7 +1888,6 @@ def _(mo):
     $$
 
     where $c$ is a constant. Therefore $\operatorname{Var}(Y) = c\,\mu^4$.
-
     """
     )
     return
@@ -1934,7 +1936,7 @@ def _(RegressionInference, mo, np, stats):
             if ρ == 0.0:  # equivalent to test β1=0 of regression problem
                 return self.slopeTest(alternative=alternative)
             else:  # Fisher's z-transform
-                z = np.arctanh(np.sqrt(self.r2))
+                z = np.arctanh(self.r)
                 dist = stats.norm(np.arctanh(ρ), 1 / np.sqrt(self.n - 3))
                 match alternative:
                     case "two-sided":
@@ -1961,7 +1963,7 @@ def _(RegressionInference, mo, np, stats):
             Output:
                 the CI [low, high].
             """
-            mu = np.arctanh(np.sqrt(self.r2))
+            mu = np.arctanh(self.r)
             dist = stats.norm(mu, 1 / np.sqrt(self.n - 3))
             l, h = dist.ppf(α / 2), dist.ppf(1 - α / 2)
 
@@ -2000,20 +2002,20 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(CorrelationInference, mo, np):
-    _r = CorrelationInference(dnum=28, x="Height", y="Weight")
-    _pval, _ = _r.correlationTest(0.7, alternative="greater")
+def _(CorrelationInference, mo):
+    _c = CorrelationInference(dnum=28, x="Height", y="Weight")
+    _pval, _ = _c.correlationTest(0.7, alternative="greater")
 
 
     mo.md(rf"""
     /// details | (a) Plot weights vs. heights.
 
-    {mo.as_html(_r.chart("scatter"))}
+    {mo.as_html(_c.chart("scatter"))}
     ///
 
     /// details | (b) Calculate the correlation coefficient. Test if it is significantly greater than 0.7.
 
-    The correlation coefficient $r$ = {np.sqrt(_r.r2):.4g}. Set up the hypothesis $H_0: \rho \le 0.7$ and its $P$-value = {_pval:.4g}. So $r$ is not significantly greater than 0.7.
+    The correlation coefficient $r$ = {_c.r:.4g}. Set up the hypothesis $H_0: \rho \le 0.7$ and its $P$-value = {_pval:.4g}. So $r$ is not significantly greater than 0.7.
     ///""")
     return
 
@@ -2052,21 +2054,21 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(CorrelationInference, mo, np):
-    _r = CorrelationInference(dnum=29, x="Twin1:Twin 1", y="Twin2:Twin 2")
-    _l, _h = _r.correlationInterval()
+def _(CorrelationInference, mo):
+    _c = CorrelationInference(dnum=29, x="Twin1:Twin 1", y="Twin2:Twin 2")
+    _l, _h = _c.correlationInterval()
 
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the ridges of Twin 2 vs. Twin 1.
 
-    {mo.as_html(_r.chart("scatter"))}
+    {mo.as_html(_c.chart("scatter"))}
     ///
 
     /// details | (b) Calculate the correlation coefficient and a 95% confidence interval on $\rho$.
 
-    The correlation coefficient $r$ = {np.sqrt(_r.r2):.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}].
+    The correlation coefficient $r$ = {_c.r:.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}].
     ///"""
     )
     return
@@ -2101,24 +2103,95 @@ def _(Regression, md, mo):
 
 
 @app.cell(hide_code=True)
-def _(CorrelationInference, mo, np):
-    _r = CorrelationInference(dnum=30, x="100m", y="200m")
-    _l, _h = _r.correlationInterval()
-    _pval, _ = _r.correlationTest(0.5, alternative="greater")
+def _(CorrelationInference, mo):
+    _c = CorrelationInference(dnum=30, x="100m", y="200m")
+    _l, _h = _c.correlationInterval()
+    _pval, _ = _c.correlationTest(0.5, alternative="greater")
 
     mo.md(
         rf"""
     /// details | (a) Make a scatter plot of the 200 m vs. 100 m times. Does there appear to be a strong or weak correlation? Explain.
 
-    {mo.as_html(_r.chart("scatter"))}
+    {mo.as_html(_c.chart("scatter"))}
 
-    There seems to be a weak correlation, as the data points do not form a clear line; only the trend is somewhat increasing.
+    There does not seem to be a strong correlation, as the data points do not form a clear line; but the trend is somewhat increasing. $\rho$ is probably around 0.7.
     ///
 
     /// details | (b) Calculate the correlation coefficient and a 95% confidence interval on $\rho$. Test if the correlation coefficient is significantly greater than 0.5.
 
-    The correlation coefficient $r$ = {np.sqrt(_r.r2):.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}]. The hypothesis $H_0: \rho \le 0.5$ is rejected with $P$-value = {_pval:.4g}, so yes, the correlation coefficient is significantly greater than 0.5
+    The correlation coefficient $r$ = {_c.r:.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}]. The hypothesis $H_0: \rho \le 0.5$ is rejected with $P$-value = {_pval:.4g}, so yes, the correlation coefficient is significantly greater than 0.5 at the 95% confidence level.
     ///"""
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(Regression, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 10.31
+
+    The United Nations Children's Fund (UNICEF) publishes an annual report which includes statistical tables on 96 variables related to child health and the status of women
+    and children from 129 different countries. The annual death rate of children under 5 (per
+    1000 live births) and the female literacy rate (for women aged 10 or over) are given for a
+    sample of these countries.
+
+    {
+            mo.center(
+                mo.as_html(
+                    Regression.gt(31)
+                    .cols_align("center")
+                    .tab_stub(rowname_col="Place")
+                    .tab_stubhead(label="Country")
+                    .cols_label(LRate="Female Literacy Rate (%)", DRate="Child Deaths per 10³")
+                    .fmt_integer(columns=["LRate", "DRate"])
+                    .tab_source_note(
+                        source_note=md(
+                            "Source: The Open University (1993) _MDST242 Statistics in Society Unit A5: Review_, 3rd ed., Milton Keynes: The Open University. Tables 3.1-3.3. Reprinted in _Small Data Sets_, pp. 74-75."
+                        )
+                    )
+                )
+            )
+        }
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(CorrelationInference, mo):
+    _c = CorrelationInference(
+        dnum=31, x="LRate:female literacy", y="DRate:childhood mortality"
+    )
+    _l, _h = _c.correlationInterval()
+    _pval, _ = _c.correlationTest(-0.7, alternative="less")
+
+    mo.md(
+        rf"""
+    /// details | (a) Make a scatter plot of the childhood mortality rate vs. the female literacy rate. Comment on the relationship.
+
+    {mo.as_html(_c.chart("scatter"))}
+
+    From the plot one can see a rough inverse relationship between childhood mortality and female literacy: In general there is less childhoot mortality with higher female literacy. The correlation coefficient may be somewhere around -0.6.
+    ///
+
+    /// details | (b) Calculate the correlation coefficient and a 95% confidence interval on $\rho$. Test if the correlation coefficient is significantly greater than 0.7 in absolute value. Interpret the results.
+
+    The correlation coefficient $r$ = {_c.r:.4g} and a 95% CI on $\rho$ is [{_l:.4g}, {_h:.4g}]. Because $\rho$ is negative, to test if it is greater than 0.7 in absolute value is in effect to test the hypothesis $H_0: \rho \ge -0.7$, which cannot be rejected with $P$-value = {_pval:.4g}. That is, the correlation coefficient is not significantly greater than 0.7 in absolute value.
+    ///"""
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.32
+
+    Show that the sample correlation coefficient between two variables is unchanged except
+    possibly for the sign if they are linearly transformed. Thus the correlation coefficient between the New York and Chicago daily temperatures is the same whether the temperatures are measured in °F or °C. (_Hint_: Suppose $r_{xy}$ is the correlation coefficient for the data $(x_1, y_1), (x_2, y_2), \ldots, (x_n, y_n)$. Let $u_i = a_i x + b$ and $v_i = c y_i + d$ for $i = 1, 2, \ldots, n$ be the linearly transformed data where $a, c \ne 0$. Show that $r_{uv} = \pm r_{xy}$ with a + sign if $a c > 0$ and a - sign if $a c < 0$.)
+    """
     )
     return
 
