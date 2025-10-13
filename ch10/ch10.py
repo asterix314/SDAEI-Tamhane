@@ -2198,13 +2198,28 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## Advanced Exercises""")
+    mo.md(
+        r"""
+    We look at the population correlation coefficient $\rho_{XY}$ and see how it is affected by a linear transformation $U = a\,X+b$ and $V=c\,Y+d$ where $a,c \ne 0$:
+
+    $$
+    \begin{align*}
+    \rho_{UV} &= \frac{\operatorname{Cov(U,V)}}{\sqrt{\operatorname{Var(U)} \operatorname{Var(V)}}}\\
+    &= \frac{\operatorname{Cov(a\,X+b, c\,Y+d)}}{\sqrt{\operatorname{Var(a\,X+b)} \operatorname{Var(c\,Y+d)}}}\\
+    &= \frac{ac\operatorname{Cov(X,Y)}}{|ac|\sqrt{\operatorname{Var(X)} \operatorname{Var(Y)}}}\\
+    &= \operatorname{sign}(ac)\;\rho_{XY}
+    \end{align*}
+    $$
+
+    Therefore it must follow that the sample correlation coefficient $r_{uv} = \operatorname{sign}(ac)\;r_{xy}$.
+    """
+    )
     return
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r""" """)
+    mo.md(r"""## Advanced Exercises""")
     return
 
 
@@ -2217,6 +2232,54 @@ def _(mo):
     Show that$$\sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) = 0.$$
 
     (_Hint_: Substitute $\hat{y}_i = \beta_0 + \beta_1 x_i = \bar{y} + \hat{\beta}_1 (x_i - \bar{x})$ and simplify.)
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    $$
+    \begin{align*}
+    \sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) &=\sum_{i=1}^n \left[y_i - \bar y - \hat\beta_1(x_i-\bar x)\right]\left[\bar y + \hat\beta_1(x_i-\bar x) - \bar{y}\right] \quad \quad \triangleright \textrm{take the hint} \\
+    &=\hat\beta_1\sum_{i=1}^n(y_i-\bar y)(x_i - \bar x) - \hat\beta_1^2 \sum_{i=1}^n(x_i - \bar x)^2\\
+    &=\hat\beta_1 S_{xy} - \hat\beta_1^2 S_{xx}\\
+    &=0 \quad \quad \triangleright \textrm{remember}\ \hat\beta_1 = S_{xy}/S_{xx}
+    \end{align*}
+    $$
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.34
+
+    The problem of comparing the means of two independent samples can be formulated as a regression problem as follows: Denote $n_1$ i.i.d. observations from a $N(\mu_1, \sigma^2)$ population by $y_1, y_2, \ldots, y_n$, and $n_2$ i.i.d. observations from a $N(\mu_2, \sigma^2)$ population by $y_{n_1+1}, y_{n_1+2}, \ldots, y_{n_1+n2}$. Define an indicator variable $x_i = 1$ for $i = 1, 2, \ldots, n_1$ and $x_i = 0$ for $i = n_1 + 1, n_1 + 2, \ldots, n_1 + n_2$. Thus if $x_i = 1$, then $y_i$ comes from the first population, and if $x_i = 0$, then $y_i$ comes from the second population.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    (a) Show that the regression model (10.1) corresponds to /30 = µ 2 and /31 = µ 1 - µ2.
+
+    (b) Apply the formulas for the LS estimates A, and /J1 to show that A, = y2 and
+    A /J1 = Y1 - Y2-
+
+    (c) Show that the MSE for regression is the same as the pooled estimate s2 of a 2 with
+    n1 + n2 - 2 d.f.
+
+    (d) Show that the regression t-test of fJ1 = 0 is the same as the pooled variances t-test
+    of µ1 = µ2.
     """
     )
     return
