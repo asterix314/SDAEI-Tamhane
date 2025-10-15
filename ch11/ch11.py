@@ -6,13 +6,14 @@ app = marimo.App(width="medium")
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""# Chapter 10 Simple Linear Regression and Correlation""")
+    mo.md(r"""# Chapter 11 Multiple Linear Regression""")
     return
 
 
 @app.cell(hide_code=True)
 def _():
     from sys import stderr
+    # from dataclasses import dataclass
 
     import marimo as mo
     import polars as pl
@@ -22,19 +23,7 @@ def _():
     from scipy import stats
     from great_tables import GT, md, html
 
-    DARK_MODE = True
-    DIR = "../SDAEI-Tamhane/ch10"
-
-    if DARK_MODE:
-        alt.theme.enable("carbong90")
-    else:
-        alt.theme.enable("carbonwhite")
-
-
-    def img(bname: str, **kw) -> mo.Html:
-        suffix = "dark.svg" if DARK_MODE else "light.svg"
-        return mo.center(mo.image(f"{DIR}/{bname}-{suffix}", rounded=True, **kw))
-
+    alt.theme.enable("carbong90")
 
     # import inspect
 
@@ -44,26 +33,12 @@ def _():
     #     return f"""```python
     # {source}
     # ```"""
-    return (
-        DARK_MODE,
-        DIR,
-        GT,
-        alt,
-        col,
-        html,
-        img,
-        md,
-        mo,
-        np,
-        pl,
-        stats,
-        stderr,
-    )
+    return GT, alt, col, html, md, mo, np, pl, stats, stderr
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 10.1 A Probabilistic Model for Simple Linear Regression""")
+    mo.md(r"""## 11.1 A Probabilistic Model for Multiple Linear Regression""")
     return
 
 
@@ -178,7 +153,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 10.2 Fitting the Simple Linear Regression Model""")
+    mo.md(r"""## 11.2 Fitting the Multiple Regression Model""")
     return
 
 
@@ -204,8 +179,10 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(DARK_MODE, DIR, GT, alt, col, mo, pl, stderr):
+def _(GT, alt, col, mo, pl, stderr):
     class Regression:
+        _dark_mode = True
+
         @staticmethod
         def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
             """
@@ -260,7 +237,7 @@ def _(DARK_MODE, DIR, GT, alt, col, mo, pl, stderr):
         @staticmethod
         def ex(dnum: int) -> pl.DataFrame:
             """load exercise data"""
-            datafile = f"{DIR}/Ex10-{dnum}.json"
+            datafile = f"../SDAEI-Tamhane/ch10/Ex10-{dnum}.json"
             return pl.read_json(datafile).explode(pl.all())
 
         @staticmethod
@@ -271,7 +248,7 @@ def _(DARK_MODE, DIR, GT, alt, col, mo, pl, stderr):
                 table_font_size=11,
                 container_height="40vh",
             )
-            if DARK_MODE:
+            if Regression._dark_mode:
                 gt = gt.tab_options(
                     table_font_color="white",
                     table_background_color="#181C1A",
@@ -644,7 +621,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 10.3 Statistical Inference for Simple Linear Regression""")
+    mo.md(r"""## 11.3 *Multiple Regression Model in Matrix Notation""")
     return
 
 
@@ -1057,7 +1034,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 10.4 Regression Diagnosis""")
+    mo.md(r"""## 11.4 Statistical Inference for Multiple Regression""")
     return
 
 
@@ -1126,7 +1103,6 @@ def _(RegressionInference, alt, col, mo, pl):
             filling = (
                 alt.Chart(self.df)
                 .mark_rule(size=0.3, color="lightblue", strokeDash=[4, 2])
-                .mark_rule(size=0.3, strokeDash=[4, 2])
                 .encode(
                     x=alt.X(self._x_name),
                     y=alt.Y("y0").title(None),
@@ -1919,7 +1895,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 10.5 *Correlation Analysis""")
+    mo.md(r"""## 11.5 Regression Diagnostics""")
     return
 
 
@@ -2243,6 +2219,24 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.md(r"""## 11.6 Topics in Regression Modeling""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## 11.7 Variable Selection Methods""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## 11.8 A Strategy for Building a Multiple Regression Model""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""## Advanced Exercises""")
     return
 
@@ -2291,12 +2285,10 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(img, mo):
+def _(mo):
     mo.md(
-        rf"""
+        r"""
     /// details | (a) Show that the regression model corresponds to $\beta_0 = \mu_2$ and $\beta_1 = \mu_1 - \mu_2$.
-
-    {img("ex34", width=400)}
 
     ///
 
