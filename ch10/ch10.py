@@ -23,7 +23,6 @@ def _():
     from great_tables import GT, md, html
 
     DARK_MODE = True
-    DIR = "../SDAEI-Tamhane/ch10"
 
     if DARK_MODE:
         alt.theme.enable("carbong90")
@@ -33,7 +32,9 @@ def _():
 
     def img(bname: str, **kw) -> mo.Html:
         suffix = "dark.svg" if DARK_MODE else "light.svg"
-        return mo.center(mo.image(f"{DIR}/{bname}-{suffix}", rounded=True, **kw))
+        return mo.center(
+            mo.image(mo.notebook_dir() / "{bname}-{suffix}", rounded=True, **kw)
+        )
 
 
     # import inspect
@@ -44,21 +45,7 @@ def _():
     #     return f"""```python
     # {source}
     # ```"""
-    return (
-        DARK_MODE,
-        DIR,
-        GT,
-        alt,
-        col,
-        html,
-        img,
-        md,
-        mo,
-        np,
-        pl,
-        stats,
-        stderr,
-    )
+    return DARK_MODE, GT, alt, col, html, img, md, mo, np, pl, stats, stderr
 
 
 @app.cell(hide_code=True)
@@ -204,7 +191,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(DARK_MODE, DIR, GT, alt, col, mo, pl, stderr):
+def _(DARK_MODE, GT, alt, col, mo, pl, stderr):
     class Regression:
         @staticmethod
         def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
@@ -260,7 +247,7 @@ def _(DARK_MODE, DIR, GT, alt, col, mo, pl, stderr):
         @staticmethod
         def ex(dnum: int) -> pl.DataFrame:
             """load exercise data"""
-            datafile = f"{DIR}/Ex10-{dnum}.json"
+            datafile = mo.notebook_dir() / f"Ex10-{dnum}.json"
             return pl.read_json(datafile).explode(pl.all())
 
         @staticmethod
@@ -375,24 +362,22 @@ def _(Regression, html, md, mo):
     The time between eruptions of Old Faithful geyser in Yellowstone National Park is random but is related to the duration of the last eruption. The table below shows these times for 21 consecutive eruptions.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(4)
-                    .tab_header(
-                        title="Old Faithful Eruptions: Duration and Time Between Eruptions (in min.)"
-                    )
-                    .tab_stub(rowname_col="No")
-                    .tab_stubhead(label="Obs. No.")
-                    .cols_label(
-                        LAST=html("Duration of Eruption<br>(LAST)"),
-                        NEXT=html("Time Between Eruptions<br>(NEXT)"),
-                    )
-                    .fmt_number(columns=["No", "NEXT"], drop_trailing_zeros=True)
-                    .cols_align(align="center")
-                    .tab_source_note(
-                        source_note=md(
-                            'Source: L. Denby and D. Pregibon ( 1987), "An example of the use of graphics in regression". _The American Statistician_, 41, pp. 33-38.'
-                        )
+            mo.as_html(
+                Regression.gt(4)
+                .tab_header(
+                    title="Old Faithful Eruptions: Duration and Time Between Eruptions (in min.)"
+                )
+                .tab_stub(rowname_col="No")
+                .tab_stubhead(label="Obs. No.")
+                .cols_label(
+                    LAST=html("Duration of Eruption<br>(LAST)"),
+                    NEXT=html("Time Between Eruptions<br>(NEXT)"),
+                )
+                .fmt_number(columns=["No", "NEXT"], drop_trailing_zeros=True)
+                .cols_align(align="center")
+                .tab_source_note(
+                    source_note=md(
+                        'Source: L. Denby and D. Pregibon ( 1987), "An example of the use of graphics in regression". _The American Statistician_, 41, pp. 33-38.'
                     )
                 )
             )
@@ -446,18 +431,16 @@ def _(Regression, md, mo):
     The data below show Olympic triple jump winning distances for men in meters for the years 1896 to 1992 (there were no Olympic games in 1916, 1940, and 1944).
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(5)
-                    .cols_align("center")
-                    .tab_header(
-                        title="Men's Olympic Triple Jump Winning Distance (in meters)"
-                    )
-                    .fmt_integer(columns="Year", use_seps=False)
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: _World Almanac and Book of Facts_ (1995), Mahwah. NJ: Funk & Wagnalls Corporation, p. 860."
-                        )
+            mo.as_html(
+                Regression.gt(5)
+                .cols_align("center")
+                .tab_header(
+                    title="Men's Olympic Triple Jump Winning Distance (in meters)"
+                )
+                .fmt_integer(columns="Year", use_seps=False)
+                .tab_source_note(
+                    source_note=md(
+                        "Source: _World Almanac and Book of Facts_ (1995), Mahwah. NJ: Funk & Wagnalls Corporation, p. 860."
                     )
                 )
             )
@@ -508,15 +491,13 @@ def _(Regression, md, mo):
     The following data give the barometric pressure (in inches of mercury) and the boiling point (in °F) of water in the Alps.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(6)
-                    .cols_align("center")
-                    .tab_header(title="Boiling Point of Water in the Alps")
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: A. C. Atkinson (1985), _Plots, Transformations and Regression_, Oxford: Clarendon Press. p. 4. Reprinted in _Small Data Sets_, pp. 270-271."
-                        )
+            mo.as_html(
+                Regression.gt(6)
+                .cols_align("center")
+                .tab_header(title="Boiling Point of Water in the Alps")
+                .tab_source_note(
+                    source_note=md(
+                        "Source: A. C. Atkinson (1985), _Plots, Transformations and Regression_, Oxford: Clarendon Press. p. 4. Reprinted in _Small Data Sets_, pp. 270-271."
                     )
                 )
             )
@@ -563,18 +544,16 @@ def _(Regression, md, mo):
     The following table shows Olympic 100 meter backstroke winning times for women for the years 1924 to 1992 (there were no Olympic games in 1940 and 1944).
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(7)
-                    .cols_align("center")
-                    .tab_header(
-                        title="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)"
-                    )
-                    .fmt_integer(columns="Year", use_seps=False)
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: _The World Almanac and Book of Facts_ (1995). Mahwah, NJ: Funk & Wagnalls Corporation. p. 864."
-                        )
+            mo.as_html(
+                Regression.gt(7)
+                .cols_align("center")
+                .tab_header(
+                    title="Women's Olympic 100 Meter Backstroke Winning Times (in seconds)"
+                )
+                .fmt_integer(columns="Year", use_seps=False)
+                .tab_source_note(
+                    source_note=md(
+                        "Source: _The World Almanac and Book of Facts_ (1995). Mahwah, NJ: Funk & Wagnalls Corporation. p. 864."
                     )
                 )
             )
@@ -656,9 +635,9 @@ def _(mo):
     $$\mathrm{SE}(\hat{\beta}_0) = s\sqrt{\frac{\sum x_i^2}{n\,S_{xx}}} \quad \text{and}\quad
     \mathrm{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{xx}}}.$$
     These are used to construct confidence intervals and perform hypothesis tests on $\beta_0$ and $\beta_1$. For example, a $100(1-\alpha)\%$ confidence interval on $\beta_1$ is given by
-    $$\hat{\beta_1} \pm t_{n-2, \alpha/2}\,\textrm{SE}(\hat{\beta_1}).$$
+    $$\hat{\beta_1} \pm t_{n-2, \alpha/2}\,\operatorname{SE}(\hat{\beta_1}).$$
 
-    A common use of the fitted regression model is to _predict_ $Y^*$ for specified $x = x^*$ or to _estimate_ $\mu^* = \textrm{E}(Y^*)$. In both cases we have
+    A common use of the fitted regression model is to _predict_ $Y^*$ for specified $x = x^*$ or to _estimate_ $\mu^* = \operatorname{E}(Y^*)$. In both cases we have
     $$\hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.$$
 
     A $100(1-\alpha)\%$ CI for $\mu^*$ is given by
@@ -918,15 +897,13 @@ def _(Regression, md, mo):
     The U.S. infant mortality rates (IMR) (per 1000 live births) for both sexes and all races for the years 1981-1990 (coded as years 1-10) were as follows:
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(13)
-                    .cols_align("center")
-                    .fmt_integer(columns="Year", use_seps=False)
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: _The World Almanac and Book of Facts_ (1994), Mahwah, NJ: Funk & Wagnalls Corporation, p. 956."
-                        )
+            mo.as_html(
+                Regression.gt(13)
+                .cols_align("center")
+                .fmt_integer(columns="Year", use_seps=False)
+                .tab_source_note(
+                    source_note=md(
+                        "Source: _The World Almanac and Book of Facts_ (1994), Mahwah, NJ: Funk & Wagnalls Corporation, p. 956."
                     )
                 )
             )
@@ -972,7 +949,7 @@ def _(mo, np, stats):
 
     Reading off the MINITAB output, the rate of IMR decrease is {_β1} deaths per 1,000 live births per year. 
 
-    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\textrm{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.4g} with $P$-value {_pval:.4g} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
+    Set up $H_0: \beta_1 \ge 0.3$ and use the MINITAB output $\operatorname{{SE}}(\hat{{\beta}}_1)$ = {_se} to get a $t$-statistic of {_t:.4g} with $P$-value {_pval:.4g} < $\alpha$. So yes, the US IMR decrease is less than that for the rest of the Western world.
     /// """
         )
     )
@@ -994,7 +971,7 @@ def _(mo, np, stats):
     mo.output.append(
         mo.md(
             rf"""
-    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{{xx}}$ can be obtained from the values of $\textrm{{Stdev}}(\hat{{\beta}}_1)$ and $s$ given in the MINITAB output.)
+    /// details | (b) Predict the IMR for the year 1995. Calculate a 95% prediction interval. (Note that $S_{{xx}}$ can be obtained from the values of $\operatorname{{Stdev}}(\hat{{\beta}}_1)$ and $s$ given in the MINITAB output.)
 
     $S_{{xx}}$ can be obtained as in the note, or simply $S_{{xx}} = \textrm{{SSR}}/\hat{{\beta}}_1^2$, and both $\textrm{{SSR}}$ and $\hat{{\beta}}_1$ are in the MINITAB output. Anyways, the calculated IMR for the year 1995 is {_y:.4g} ± {_err:.4g} = [{_y - _err:.4g}, {_y + _err:.4g}].
     ///"""
@@ -1011,10 +988,10 @@ def _(mo):
 
     For the linear regression model show that the sample mean $\bar{Y}$ and the LS slope estimator $\hat{\beta}_1$ are statistically independent.
 
-    _Hint_: Write $\bar{Y} = \frac{1}{n} \sum Y_i$ and $\hat{\beta}_1 = \sum c_i Y_i$, where $c_i = (x_i - \bar{x}) / S_{xx}$ and satisfy $\sum c_i = 0$. Then show that $\textrm{Cov}(\bar{Y}, \hat{\beta}_1) = 0$ by using the formula 
+    _Hint_: Write $\bar{Y} = \frac{1}{n} \sum Y_i$ and $\hat{\beta}_1 = \sum c_i Y_i$, where $c_i = (x_i - \bar{x}) / S_{xx}$ and satisfy $\sum c_i = 0$. Then show that $\operatorname{Cov}(\bar{Y}, \hat{\beta}_1) = 0$ by using the formula 
 
     $$
-    \textrm{Cov}\left(\sum_{i=1}^m a_i X_i, \sum_{j=1}^n b_j Y_j \right) = \sum_{i=1}^m \sum_{j=1}^n a_i b_j\,\textrm{Cov}(X_i,Y_j)
+    \operatorname{Cov}\left(\sum_{i=1}^m a_i X_i, \sum_{j=1}^n b_j Y_j \right) = \sum_{i=1}^m \sum_{j=1}^n a_i b_j\,\operatorname{Cov}(X_i,Y_j)
     $$
 
     for the covariance between two sets of linear combinations of r.v.'s. Finally, use the result that if two normal r.v.'s are uncorrelated, then they are independent.
@@ -1042,9 +1019,9 @@ def _(mo):
 
     $$
     \begin{align*}
-    \textrm{Cov}(\bar{Y}, \hat{\beta}_1) &= \textrm{Cov}\left(\frac{1}{n}\sum_i Y_i, \sum_j c_j Y_j\right) \\
-    &= \sum_i \sum_j \frac{c_j}{n}\,\textrm{Cov}(Y_i, Y_j) \\
-    &= \frac{1}{n} \sum_i c_i \quad \quad \triangleright\ \textrm{Cov}(Y_i, Y_j) = 1_{i=j}\\
+    \operatorname{Cov}(\bar{Y}, \hat{\beta}_1) &= \operatorname{Cov}\left(\frac{1}{n}\sum_i Y_i, \sum_j c_j Y_j\right) \\
+    &= \sum_i \sum_j \frac{c_j}{n}\,\operatorname{Cov}(Y_i, Y_j) \\
+    &= \tag{$\operatorname{Cov}(Y_i, Y_j) = 1_{i=j}$} \frac{1}{n} \sum_i c_i\\
     &= 0.
     \end{align*}
     $$
@@ -1075,7 +1052,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(RegressionInference, alt, col, mo, pl):
     from copy import deepcopy
 
@@ -1207,15 +1184,13 @@ def _(Regression, md, mo):
     A prime is a positive integer that has no integer factors other than 1 and itself (1 is not regarded as a prime). The number of primes in any given interval of whole numbers is highly irregular. However, the proportion of primes less than or equal to any given number $x$ (denoted by $p(x)$) follows a regular pattern as $x$ increases. The following table gives the number and proportion of primes for $x = 10^n$ for $n = 1, 2, \ldots, 10$. The objective of the present exercise is to discover this pattern.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(16)
-                    .cols_align("center")
-                    .fmt_integer(columns="Primes")
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: W. Dunham (1994), _The Mathematical Universe_, New York: Wiley, p. 196."
-                        )
+            mo.as_html(
+                Regression.gt(16)
+                .cols_align("center")
+                .fmt_integer(columns="Primes")
+                .tab_source_note(
+                    source_note=md(
+                        "Source: W. Dunham (1994), _The Mathematical Universe_, New York: Wiley, p. 196."
                     )
                 )
             )
@@ -1264,7 +1239,7 @@ def _(Regression, alt, mo, pl):
         r"""
     /// details | (b) Estimate the slope of the line $p(x) = \beta_0 + \beta_1 \cdot 1/\log_{10}x$ and show that $\hat{\beta}_1 \approx \log_{10}e = 0.4343$.
 
-    Because $p(x) \to 0$ as $\textrm{h3} \to 0$, it's appropriate to assume $\beta_0 = 0$ and use _regression through the origin_ (Exercise 8) to calculate """
+    Because $p(x) \to 0$ as $\rm{h3} \to 0$, it's appropriate to assume $\beta_0 = 0$ and use _regression through the origin_ (Exercise 8) to calculate """
         rf"""
     $$\hat{{\beta}}_1 = {_β1:.4g} \approx \log_{{10}}e = 0.4343.$$
     ///
@@ -1292,16 +1267,14 @@ def _(Regression, md, mo):
     In a memory retention experiment subjects were asked to memorize a list of disconnected items, and then were asked to recall them at various times up to a week later. The proportion $p$ of items recalled at times $t$ (in minutes) is given below.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(17)
-                    .cols_align("center")
-                    .cols_label(P="p")
-                    .fmt_integer(columns="t")
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: F. Mosteller, R. E. K. Rourke, and G. B. Thomas (1970), _Probability with Statistical Applications_, 2nd ed., Reading, MA: Addison-Wesley. Reprinted in _Small Data Sets_, p. 128."
-                        )
+            mo.as_html(
+                Regression.gt(17)
+                .cols_align("center")
+                .cols_label(P="p")
+                .fmt_integer(columns="t")
+                .tab_source_note(
+                    source_note=md(
+                        "Source: F. Mosteller, R. E. K. Rourke, and G. B. Thomas (1970), _Probability with Statistical Applications_, 2nd ed., Reading, MA: Addison-Wesley. Reprinted in _Small Data Sets_, p. 128."
                     )
                 )
             )
@@ -1352,18 +1325,16 @@ def _(Regression, html, md, mo):
     The following are the average distances of the planets in the solar system from the sun:
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(18)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="No")
-                    .tab_stubhead(label="Planet No.")
-                    .cols_label(Dist=html("Distance<br>(millions of miles)"))
-                    .fmt_integer(columns="No")
-                    .tab_source_note(
-                        source_note=md(
-                            "This exercise is based on Example 6, Ch. 3 of F. Mosteller. S. E. Fienherg, and R. E. K. Rourke (1983). _Beginning Statistics with Data Analysis_, Reading. MA: Addison-Wesley."
-                        )
+            mo.as_html(
+                Regression.gt(18)
+                .cols_align("center")
+                .tab_stub(rowname_col="No")
+                .tab_stubhead(label="Planet No.")
+                .cols_label(Dist=html("Distance<br>(millions of miles)"))
+                .fmt_integer(columns="No")
+                .tab_source_note(
+                    source_note=md(
+                        "This exercise is based on Example 6, Ch. 3 of F. Mosteller. S. E. Fienherg, and R. E. K. Rourke (1983). _Beginning Statistics with Data Analysis_, Reading. MA: Addison-Wesley."
                     )
                 )
             )
@@ -1414,19 +1385,17 @@ def _(Regression, html, mo):
     The following are the speeds of the planets in the solar system as they revolve around the sun:
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(19)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="No")
-                    .tab_stubhead(label="Planet No.")
-                    .cols_label(
-                        Distan=html("Distance<br>(millions of miles)"),
-                        Speed=html("Speed<br>(miles per hour)"),
-                    )
-                    .cols_move_to_start(columns="Planet")
-                    .fmt_integer(columns=["No", "Speed"])
+            mo.as_html(
+                Regression.gt(19)
+                .cols_align("center")
+                .tab_stub(rowname_col="No")
+                .tab_stubhead(label="Planet No.")
+                .cols_label(
+                    Distan=html("Distance<br>(millions of miles)"),
+                    Speed=html("Speed<br>(miles per hour)"),
                 )
+                .cols_move_to_start(columns="Planet")
+                .fmt_integer(columns=["No", "Speed"])
             )
         }
 
@@ -1447,7 +1416,7 @@ def _(RegressionDiagnosis, col, mo):
     Highschool physics tells us that a planet orbiting the sun at distance $R$ and speed $v$ will have centripetal acceleration $g = v^2/R$, which is provided by gravity $g = GM/R^2$. Therefore 
     $$R = \frac{GM}{v^2}.$$
 
-    So the transformation we are looking for is $y = 1/\textrm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
+    So the transformation we are looking for is $y = 1/\rm{speed}^2$, which is confirmed by the scatter plot that this is a linear relationship.
     """
         rf"""
     {mo.as_html(_r.chart("scatter", x="Distan:distance", y="Speed:speed") | _r.chart("scatter"))}
@@ -1467,16 +1436,14 @@ def _(Regression, html, mo):
     To relate the stopping distance of a car to its speed, ten cars were tested at five different speeds, two cars at each speed. The following data were obtained.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(20)
-                    .cols_align("center")
-                    .cols_label(
-                        x=html("Speed x<br>(mph)"),
-                        y=html("Stop. Dist. y<br>(ft)"),
-                    )
-                    .fmt_integer(columns="x")
+            mo.as_html(
+                Regression.gt(20)
+                .cols_align("center")
+                .cols_label(
+                    x=html("Speed x<br>(mph)"),
+                    y=html("Stop. Dist. y<br>(ft)"),
                 )
+                .fmt_integer(columns="x")
             )
         }
     """
@@ -1504,7 +1471,7 @@ def _(RegressionDiagnosis, col, mo):
 
     /// details | (c) Based on the residual plot, what transformation of stopping distance should be used to linearize the relationship with respect to speed? A clue to find this transformation is provided by the following engineering argument: In bringing a car to a stop, its kinetic energy is dissipated as its braking energy, and the two are roughly equal. The kinetic energy is proportional to the square of the car's speed, while the braking energy is proportional to the stopping distance, assuming a constant braking force.
 
-    The engineering argument boils down to $\textrm{{distance}} \propto \textrm{{speed}}^2$. Therefore we should take the square root of stopping distance.
+    The engineering argument boils down to $\rm{{distance}} \propto \rm{{speed}}^2$. Therefore we should take the square root of stopping distance.
     ///
     """
         )
@@ -1538,18 +1505,16 @@ def _(Regression, html, md, mo):
     The direct current output from a windmill ($y$) was measured against the wind velocity ($x$) in miles per hour. The following data were obtained.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(21)
-                    .cols_align("center")
-                    .cols_label(
-                        mph=html("Wind Velocity<br>(mph)"),
-                        amps=html("DC Output<br>(amp)"),
-                    )
-                    .tab_source_note(
-                        source_note=md(
-                            'Source: G. Joglekar, J. H. Schuenemeyer, and V. LaRicca (1989), "Lack of fit testing when replicates are not available," _The American Statistician_, 43, pp. 135-143. Reprinted in _Small Data Sets_, p. 271.'
-                        )
+            mo.as_html(
+                Regression.gt(21)
+                .cols_align("center")
+                .cols_label(
+                    mph=html("Wind Velocity<br>(mph)"),
+                    amps=html("DC Output<br>(amp)"),
+                )
+                .tab_source_note(
+                    source_note=md(
+                        'Source: G. Joglekar, J. H. Schuenemeyer, and V. LaRicca (1989), "Lack of fit testing when replicates are not available," _The American Statistician_, 43, pp. 135-143. Reprinted in _Small Data Sets_, p. 271.'
                     )
                 )
             )
@@ -1598,17 +1563,15 @@ def _(Regression, md, mo):
     This data set illustrates the importance of graphical plotting in regression analysis.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(22)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="No")
-                    .tab_stubhead(label="No.")
-                    .fmt_integer(columns=["No", "x1", "x2"])
-                    .tab_source_note(
-                        source_note=md(
-                            'Source: F. J. Anscombe (1973). "Graphs in statistical analysis", _The American Statistician_. 27, pp. 17-21.'
-                        )
+            mo.as_html(
+                Regression.gt(22)
+                .cols_align("center")
+                .tab_stub(rowname_col="No")
+                .tab_stubhead(label="No.")
+                .fmt_integer(columns=["No", "x1", "x2"])
+                .tab_source_note(
+                    source_note=md(
+                        'Source: F. J. Anscombe (1973). "Graphs in statistical analysis", _The American Statistician_. 27, pp. 17-21.'
                     )
                 )
             )
@@ -1703,18 +1666,16 @@ def _(Regression, md, mo):
     The approximate gestation time and birthweights are given in the following table for selected mammals. The gestation time $t$ (between fertilization and birth) for a mammal is related to the birthweight $w$ by the relationship $t = a\,b^w$, where $a$ and $b$ are constants. Regression methods can be used to estimate $a$ and $b$ by transforming this relationship into a linear model.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(23)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="Mammal")
-                    .tab_stubhead(label="Mammal")
-                    .cols_label(kg="Birthweight (kg)", days="Gestation (days)")
-                    .fmt_integer(columns="days")
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: Adapted from W. Keienburg. D. Heinemann. and S. Schmitz eds. (1990). _Grizmek's Encyclopedia of Mammals_, New York: McGraw-Hill."
-                        )
+            mo.as_html(
+                Regression.gt(23)
+                .cols_align("center")
+                .tab_stub(rowname_col="Mammal")
+                .tab_stubhead(label="Mammal")
+                .cols_label(kg="Birthweight (kg)", days="Gestation (days)")
+                .fmt_integer(columns="days")
+                .tab_source_note(
+                    source_note=md(
+                        "Source: Adapted from W. Keienburg. D. Heinemann. and S. Schmitz eds. (1990). _Grizmek's Encyclopedia of Mammals_, New York: McGraw-Hill."
                     )
                 )
             )
@@ -1769,15 +1730,13 @@ def _(Regression, md, mo):
     Hospitalization cost ($h$) that is reimbursed by insurance is approximately related to the length of stay $l$ in the hospital by the relationship $h = a\,l^b$, where $a$ and $b$ are constants. Regression methods can be used to estimate $a$ and $b$ by transforming this relationship into a linear model by making the log transformation. The reimbursed hospital cost and associated length of stay are given for a sample of 33 elderly people.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(24)
-                    .cols_align("center")
-                    .fmt_integer(columns=["h", "l"])
-                    .tab_source_note(
-                        source_note=md(
-                            "Data courtesy of Professor Susan Hughes, School of Public Health, University of Illinois. Chicago."
-                        )
+            mo.as_html(
+                Regression.gt(24)
+                .cols_align("center")
+                .fmt_integer(columns=["h", "l"])
+                .tab_source_note(
+                    source_note=md(
+                        "Data courtesy of Professor Susan Hughes, School of Public Health, University of Illinois. Chicago."
                     )
                 )
             )
@@ -1835,12 +1794,12 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    /// details | (a) Recall that for a binomial proportion $p$ based on a sample of size $n$ we have $\textrm E(\hat p) = p$ and $\textrm{Var}(\hat p) = p(1 - p)/n$. Show that the variance stabilizing transformation for $\hat p$ is $$2\sqrt n\,\arcsin \sqrt{\hat p}.$$ This is the so-called _arcsin transformation_ for a binomial proportion. (_Hint_: $\int \frac{dx}{\sqrt{x(1-x)}} = 2\arcsin\sqrt x$)
+    /// details | (a) Recall that for a binomial proportion $p$ based on a sample of size $n$ we have $\operatorname{E}(\hat p) = p$ and $\operatorname{Var}(\hat p) = p(1 - p)/n$. Show that the variance stabilizing transformation for $\hat p$ is $$2\sqrt n\,\arcsin \sqrt{\hat p}.$$ This is the so-called _arcsin transformation_ for a binomial proportion. (_Hint_: $\int \frac{dx}{\sqrt{x(1-x)}} = 2\arcsin\sqrt x$)
 
     The variance of the arcsin transformation $h(\hat p)=2\sqrt n\,\arcsin \sqrt{\hat p}$ is
     $$\begin{align*}
-    \textrm{Var}[h(\hat p)] &= h'(p)^2\,\textrm{Var}(\hat p) \\
-    &=\left(\frac{\sqrt n}{\sqrt{p(1-p)}}\right)^2 \frac{p(1-p)}{n}  \quad \quad \triangleright\ \textrm{Take the Hint}\\
+    \operatorname{Var}[h(\hat p)] &= h'(p)^2\,\operatorname{Var}(\hat p) \\
+    \tag{take the hint}&=\left(\frac{\sqrt n}{\sqrt{p(1-p)}}\right)^2 \frac{p(1-p)}{n}\\
     &=1,
     \end{align*}$$
     which shows that the transformation is variance stabilizing.
@@ -1869,7 +1828,7 @@ def _(mo):
         r"""
     ### Ex 10.26
 
-    In equation (10.29), the following _arctan hyperbolic transformation_ of the sample correlation coefficient $R$ is used to achieve approximate normality of its sampling distribution: $$\operatorname{arctanh}R=\frac{1}{2}\log_e\left(\frac{1+R}{1-R}\right).$$ Show that this is an approximate variance stabilizing transformation by using the results that $\textrm E(R) \simeq \rho$ and $\textrm{Var}(R) \simeq (1-\rho^2)^2$, where $\rho$ is the population correlation coefficient.
+    In equation (10.29), the following _arctan hyperbolic transformation_ of the sample correlation coefficient $R$ is used to achieve approximate normality of its sampling distribution: $$\operatorname{arctanh}R=\frac{1}{2}\log_e\left(\frac{1+R}{1-R}\right).$$ Show that this is an approximate variance stabilizing transformation by using the results that $\operatorname E(R) \simeq \rho$ and $\operatorname{Var}(R) \simeq (1-\rho^2)^2$, where $\rho$ is the population correlation coefficient.
     """
     )
     return
@@ -1895,7 +1854,7 @@ def _(mo):
         r"""
     ### Ex 10.27
 
-    The _inverse transformation_, $h(y) = 1 / y$, is also common in practice. To use this transformation how must $\textrm{Var}(Y)$ be related to $\textrm E(Y)$?
+    The _inverse transformation_, $h(y) = 1 / y$, is also common in practice. To use this transformation how must $\operatorname{Var}(Y)$ be related to $\operatorname E(Y)$?
     """
     )
     return
@@ -1929,7 +1888,7 @@ def _(mo):
         r"""
     _Correlation analysis_ assumes that the data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ form a random sample from a _bivariate normal distribution_ with correlation coefficient $\rho$. An estimate of $\rho$ is the sample correlation coefficient $r$. An exact test of $H_0: \rho = 0$ is a $t$-test with $n-2$ d.f. based on the test statistic $$t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}}.$$
 
-    This equals $t = \hat{\beta}_1 / \textrm{SE}(\hat{\beta}_1)$ which is used to test $H_0: \beta_1 = 0$ in the related regression model. In other cases only approximate large sample inferences are available. These inferences use the parameterization $$\psi = \frac{1}{2}\log_e \left(\frac{1+\rho}{1-\rho}\right).$$
+    This equals $t = \hat{\beta}_1 / \operatorname{SE}(\hat{\beta}_1)$ which is used to test $H_0: \beta_1 = 0$ in the related regression model. In other cases only approximate large sample inferences are available. These inferences use the parameterization $$\psi = \frac{1}{2}\log_e \left(\frac{1+\rho}{1-\rho}\right).$$
 
     The sample estimate $\hat{\psi}$ of $\psi$, obtained by substituting $\hat{\rho} = r$ in the above expression, is approximately normally distributed with mean=$\frac{1}{2}\log_e (\frac{1+\rho}{1-\rho})$ and variance=$\frac{1}{n-3}$.
     """
@@ -1937,7 +1896,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(RegressionInference, mo, np, stats):
     class CorrelationInference(RegressionInference):
         def correlationTest(
@@ -2007,15 +1966,13 @@ def _(Regression, md, mo):
     The following are the heights and weights of 30 eleven year old girls.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(28)
-                    .cols_align("center")
-                    .fmt_integer(columns=["Height", "Weight"])
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: The Open University (1983). _MDST242 Srarisics in Society, Unit C3: Is my child normal?_, Milton Keynes: The Open University, Figure 3.12. Reprinted in _Small Data Sets_. p. 75."
-                        )
+            mo.as_html(
+                Regression.gt(28)
+                .cols_align("center")
+                .fmt_integer(columns=["Height", "Weight"])
+                .tab_source_note(
+                    source_note=md(
+                        "Source: The Open University (1983). _MDST242 Srarisics in Society, Unit C3: Is my child normal?_, Milton Keynes: The Open University, Figure 3.12. Reprinted in _Small Data Sets_. p. 75."
                     )
                 )
             )
@@ -2053,21 +2010,19 @@ def _(Regression, md, mo):
     Counts of the numbers of finger ridges for 12 pairs of identical twins are given in the following table.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(29)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="Set")
-                    .tab_stubhead(label="Pair")
-                    .cols_label(
-                        Twin1="Twin 1",
-                        Twin2="Twin 2",
-                    )
-                    .fmt_integer(columns=["Set", "Twin1", "Twin2"])
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: H. H. Newman, F. Freeman, and K. J. Holzinger ( 1937). _Twins_, Chicago: University of Chicago Press. Reprinted in _Small Data Sets_, p. 309."
-                        )
+            mo.as_html(
+                Regression.gt(29)
+                .cols_align("center")
+                .tab_stub(rowname_col="Set")
+                .tab_stubhead(label="Pair")
+                .cols_label(
+                    Twin1="Twin 1",
+                    Twin2="Twin 2",
+                )
+                .fmt_integer(columns=["Set", "Twin1", "Twin2"])
+                .tab_source_note(
+                    source_note=md(
+                        "Source: H. H. Newman, F. Freeman, and K. J. Holzinger ( 1937). _Twins_, Chicago: University of Chicago Press. Reprinted in _Small Data Sets_, p. 309."
                     )
                 )
             )
@@ -2107,16 +2062,15 @@ def _(Regression, md, mo):
     Times of U.K. male sprinters in 1988 for 200 meters and 100 meters without wind resistence are given in the following table.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(30)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="Athlete")
-                    .tab_stubhead(label="Athlete")
-                    .tab_spanner(label="Best Time (sec)", columns=["200m", "100m"])
-                    .tab_source_note(
-                        source_note=md("Source: The Open University (1993), _MDST242 Statistics in Society Unit A4: Relationships_, 2nd ed., Milton Keynes: The Open University, Table 2.1. Reprinted in _Small Data Sets_, p. 83."
-                        )
+            mo.as_html(
+                Regression.gt(30)
+                .cols_align("center")
+                .tab_stub(rowname_col="Athlete")
+                .tab_stubhead(label="Athlete")
+                .tab_spanner(label="Best Time (sec)", columns=["200m", "100m"])
+                .tab_source_note(
+                    source_note=md(
+                        "Source: The Open University (1993), _MDST242 Statistics in Society Unit A4: Relationships_, 2nd ed., Milton Keynes: The Open University, Table 2.1. Reprinted in _Small Data Sets_, p. 83."
                     )
                 )
             )
@@ -2155,24 +2109,21 @@ def _(Regression, md, mo):
         rf"""
     ### Ex 10.31
 
-    The United Nations Children's Fund (UNICEF) publishes an annual report which includes statistical tables on 96 variables related to child health and the status of women
-    and children from 129 different countries. The annual death rate of children under 5 (per
-    1000 live births) and the female literacy rate (for women aged 10 or over) are given for a
-    sample of these countries.
+    The United Nations Children's Fund (UNICEF) publishes an annual report which includes statistical tables on 96 variables related to child health and the status of women and children from 129 different countries. The annual death rate of children under 5 (per 1000 live births) and the female literacy rate (for women aged 10 or over) are given for a sample of these countries.
 
     {
-            mo.center(
-                mo.as_html(
-                    Regression.gt(31)
-                    .cols_align("center")
-                    .tab_stub(rowname_col="Place")
-                    .tab_stubhead(label="Country")
-                    .cols_label(LRate="Female Literacy Rate (%)", DRate="Child Deaths per 10³")
-                    .fmt_integer(columns=["LRate", "DRate"])
-                    .tab_source_note(
-                        source_note=md(
-                            "Source: The Open University (1993) _MDST242 Statistics in Society Unit A5: Review_, 3rd ed., Milton Keynes: The Open University. Tables 3.1-3.3. Reprinted in _Small Data Sets_, pp. 74-75."
-                        )
+            mo.as_html(
+                Regression.gt(31)
+                .cols_align("center")
+                .tab_stub(rowname_col="Place")
+                .tab_stubhead(label="Country")
+                .cols_label(
+                    LRate="Female Literacy Rate (%)", DRate="Child Deaths per 10³"
+                )
+                .fmt_integer(columns=["LRate", "DRate"])
+                .tab_source_note(
+                    source_note=md(
+                        "Source: The Open University (1993) _MDST242 Statistics in Society Unit A5: Review_, 3rd ed., Milton Keynes: The Open University. Tables 3.1-3.3. Reprinted in _Small Data Sets_, pp. 74-75."
                     )
                 )
             )
@@ -2267,10 +2218,11 @@ def _(mo):
         r"""
     $$
     \begin{align*}
-    \sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) &=\sum_{i=1}^n \left[y_i - \bar y - \hat\beta_1(x_i-\bar x)\right]\left[\bar y + \hat\beta_1(x_i-\bar x) - \bar{y}\right] \quad \quad \triangleright \textrm{take the hint} \\
+    &\quad\sum_{i=1}^n (y_i - \hat{y}_i)(\hat{y}_i - \bar{y}) \\
+    &=\tag{take the hint}\sum_{i=1}^n \left[y_i - \bar y - \hat\beta_1(x_i-\bar x)\right]\left[\bar y + \hat\beta_1(x_i-\bar x) - \bar{y}\right]\\
     &=\hat\beta_1\sum_{i=1}^n(y_i-\bar y)(x_i - \bar x) - \hat\beta_1^2 \sum_{i=1}^n(x_i - \bar x)^2\\
     &=\hat\beta_1 S_{xy} - \hat\beta_1^2 S_{xx}\\
-    &=0 \quad \quad \triangleright \textrm{remember}\ \hat\beta_1 = S_{xy}/S_{xx}
+    &=\tag{remember $\hat\beta_1 = S_{xy}/S_{xx}$}0
     \end{align*}
     $$
     """
@@ -2298,18 +2250,70 @@ def _(img, mo):
 
     {img("ex34", width=400)}
 
+    The above graph shows the distribution of the 2 samples around $\mu_1$ and $\mu_2$ respectively. In order for the sum of errors to be minimum, the LS line must intersect with $x=0$ on $y=\mu_2$ and with $x=1$ on $y=\mu_1$, leading to $\beta_0 = \mu_2$ and $\beta_1 = \mu_1 - \mu_2$.
     ///
+    """
+    )
+    return
 
-    /// details | (b) Apply the formulas for the LS estimates $\hat\beta_0$ and $\hat\beta_1$ to show that $\hat\beta_0 = \bar y_2$ and $\hat\beta_1 = \bar y_1 - \bar y_2$.
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Apply the formulas for the LS estimates $\hat\beta_0$ and $\hat\beta_1$ to show that $\hat\beta_0 = \bar Y_2$ and $\hat\beta_1 = \bar Y_1 - \bar Y_2$, where $\bar Y_1 = \frac{1}{n_1}\sum_{i=1}^{n_1} y_i$ and $\bar Y_2 = \frac{1}{n_2}\sum_{i=n_1+1}^{n_1+n_2} y_i$.
+
+    Firstly, it's easy to see that $$\begin{align*}
+    \bar x &= \frac{n_1}{n_1 + n_2},\\
+    \bar y &= \frac{n_1 \bar Y_1 + n_2 \bar Y_2}{n_1+n_2}.
+    \end{align*}$$ Then $$\begin{align*}
+    S_{xy} &= \sum_{i=1}^{n_1 + n_2} (x_i - \bar x)(y_i - \bar y)\\
+    &= (1-\bar x)\sum_{i=1}^{n_1}(y_i - \bar y) - \bar x \sum_{i=n_1+1}^{n_1+n_2}(y_i - \bar y)\\
+    &=\sum_{i=1}^{n_1}(y_i - \bar y) - \bar x \underbrace{\sum_{i=1}^{n_1+n_2}(y_i - \bar y)}_0\\
+    &= n_1 (\bar Y_1 - \bar y)\\
+    &= \frac{n_1 n_2}{n_1 + n_2} (\bar Y_1 - \bar Y_2),
+    \end{align*}$$ and $$\begin{align*}
+    S_{xx} &= \sum_{i=1}^{n_1+n_2}(x_i - \bar x)^2\\
+    &= \sum_{i=1}^{n_1}(1-\bar x)^2 + \sum_{i=n_1+1}^{n_1+n_2}\bar{x}^2\\
+    &= n_1(1-\bar x)^2 + n_2 \bar{x}^2\\
+    &=\frac{n_1 n_2}{n_1 + n_2}.
+    \end{align*}$$ Therefore $$\begin{align*}
+    \hat\beta_1 &= \frac{S_{xy}}{S_{xx}} = \bar Y_1 - \bar Y_2,\\
+    \hat\beta_0 &= \bar y - \hat\beta_1 \bar x = \bar Y_2.
+    \end{align*}$$
     ///
+    """
+    )
+    return
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
     /// details | (c) Show that the MSE for regression is the same as the pooled estimate $s^2$ of $\sigma^2$ with $n_1 + n_2 - 2$ d.f.
 
+    (b) establishes that when $x=1$, $\hat y=\bar Y_1$ and when $x=0$, $\hat y=\bar Y_2$. So $$\begin{align*}
+    \operatorname{SSE}(Y_1) &= \sum_{i=1}^{n_1}(y_i-\bar Y_1)^2,\\
+    \operatorname{SSE}(Y_2) &= \sum_{i=n_1+1}^{n_1+n_2}(y_i-\bar Y_2)^2,
+    \end{align*}$$ and $$\textrm{MSE} = \frac{\operatorname{SSE}(Y_1) + \operatorname{SSE}(Y_2)}{n_1 + n_2 - 2},$$ which is the same as the pooled estimate $s^2$ of $\sigma^2$ in the independent samples problem with $n_1 + n_2 - 2$ d.f.
     ///
+    """
+    )
+    return
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
     /// details | (d) Show that the regression $t$-test of $\beta_1$ = 0 is the same as the pooled variances $t$-test of $\mu_1 = \mu_2$.
 
+    In the regression $t$-test of $\beta_1$ = 0, the test statistic $$\begin{align*}
+    t = \frac{\hat\beta_1}{\operatorname{SE}(\hat\beta_1)} &= \frac{\hat\beta_1}{\textrm{MSE}/\sqrt{S_{xx}}}\\
+    &=\tag{using previous results} \frac{\bar Y_1 - \bar Y_2}{s/\sqrt{\frac{n_1n_2}{n_1+n_2}}}\\
+    &=\frac{\bar Y_1 - \bar Y_2}{s\sqrt{\frac{1}{n_1}+\frac{1}{n_2}}},
+    \end{align*}$$ which is the same test statistic as the pooled variances $t$-test of $\mu_1 = \mu_2$.
     ///
     """
     )
