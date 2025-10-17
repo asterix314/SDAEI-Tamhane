@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.16.5"
+__generated_with = "0.17.0"
 app = marimo.App(width="medium")
 
 
@@ -33,7 +33,7 @@ def _():
     def img(bname: str, **kw) -> mo.Html:
         suffix = "dark.svg" if DARK_MODE else "light.svg"
         return mo.center(
-            mo.image(mo.notebook_dir() / "{bname}-{suffix}", rounded=True, **kw)
+            mo.image(mo.notebook_dir() / f"{bname}-{suffix}", rounded=True, **kw)
         )
 
 
@@ -628,7 +628,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(img, mo):
     mo.md(
         r"""
     The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
@@ -637,17 +637,15 @@ def _(mo):
     These are used to construct confidence intervals and perform hypothesis tests on $\beta_0$ and $\beta_1$. For example, a $100(1-\alpha)\%$ confidence interval on $\beta_1$ is given by
     $$\hat{\beta_1} \pm t_{n-2, \alpha/2}\,\operatorname{SE}(\hat{\beta_1}).$$
 
-    A common use of the fitted regression model is to _predict_ $Y^*$ for specified $x = x^*$ or to _estimate_ $\mu^* = \operatorname{E}(Y^*)$. In both cases we have
-    $$\hat{Y}^* = \hat{\mu}^* = \beta_0 + \beta_1 x^*.$$
+    A common use of the fitted regression model is to _predict_ $y_0$ for specified $x = x_0$ or to _estimate_ $\mu_0 = \operatorname{E}(y_0)$. In both cases we have $$\hat y_0 = \hat\mu_0 = \hat\beta_0 + \hat\beta_1 x_0.$$
 
-    A $100(1-\alpha)\%$ CI for $\mu^*$ is given by
-    $$\hat{\mu}^* \pm t_{n-2, \alpha/2} s \sqrt{\frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.$$
+    A $100(1-\alpha)\%$ CI for $\mu_0$ is given by $$\hat\mu_0 \pm t_{n-2, \alpha/2} s \sqrt{\frac{1}{n} + \frac{(x_0 - \bar{x})^2}{S_{xx}}}.$$
 
-    A $100(1-\alpha)\%$ _prediction interval_ (PI) for $Y^*$ is given by
-    $$\hat{Y}^* \pm t_{n-2, \alpha/2} s \sqrt{1 + \frac{1}{n} + \frac{(x^* - \bar{x})^2}{S_{xx}}}.$$
+    A $100(1-\alpha)\%$ _prediction interval_ (PI) for $y_0$ is given by $$\hat y_0 \pm t_{n-2, \alpha/2} s \sqrt{1 + \frac{1}{n} + \frac{(x_0 - \bar{x})^2}{S_{xx}}}.$$
 
-    However, a $100(1-\alpha)\%$ PI for $Y^*$ is wider than a CI for $\mu^*$, because $Y^*$ is an r.v., while $\mu^*$ is a fixed constant.
+    Note that a $100(1-\alpha)\%$ PI for $y_0$ is wider than a CI for $\mu_0$, because $y_0$ is an r.v., while $\mu_0$ is a fixed constant. As the sample size $n \to \infty$, the CI shrinks to the regression line, but the PI shrinks to $$. It will never be a single line because we can never eliminate the inherent variability of the individual points around the line.
     """
+        rf"""{img("ex38")}"""
     )
     return
 
@@ -2247,9 +2245,7 @@ def _(img, mo):
     mo.md(
         rf"""
     /// details | (a) Show that the regression model corresponds to $\beta_0 = \mu_2$ and $\beta_1 = \mu_1 - \mu_2$.
-
-    {img("ex34", width=400)}
-
+    {img("ex34")}
     The above graph shows the distribution of the 2 samples around $\mu_1$ and $\mu_2$ respectively. In order for the sum of errors to be minimum, the LS line must intersect with $x=0$ on $y=\mu_2$ and with $x=1$ on $y=\mu_1$, leading to $\beta_0 = \mu_2$ and $\beta_1 = \mu_1 - \mu_2$.
     ///
     """
@@ -2320,7 +2316,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
@@ -2332,7 +2328,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(
         r"""
@@ -2340,38 +2336,90 @@ def _(mo):
 
 
     ///
-
-    //// details | (b) A least squares straight line can be fitted to the data as usual. Let Yii = A, + /J1 x;
-    be the fitted value corresponding to all Yii at x = Xi and let
-    le
-    n;
-    SSE= LL(Yij - Yij)2
-    i=l
-    j=l
-    be the error sum of squares with n - 2 d.f. Show that SSE can be partitioned as
-    le
-    k
-    n;
-    SSE = Ln;()';
-    -
-    Y;j)2 + L L(Yij - Yi)2•
-    i=l
-    i=I j=I
-    (Hint: r:,;;
-    1 (Yii - Yi) = r:,;;
-    1 eij
-    = 0.)
-    The first term in this decomposition is called the lack of fit sum of squares
-    (SSLOF) and the second term is called the pure error sum of squares (SSPE). Note
-    that MSPE = SSPE/(n - k). The d.f. for lack of fit are (n - 2) - (n - k) = k - 2.
-    (c) Define MSLOF = SSLOF/(k - 2). It can be shown that
-    F=
-    MSLOF
-    MSPE
-    has an F -distribution with k - 2 and n - k d.f. when there is no lack of fit. Explain
-    how you will use this statistic to test for lack of fit.
     """
     )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) A least squares straight line can be fitted to the data as usual. Let $\hat y_{ij} = \hat\beta_0 + \hat\beta_1 x_i$ be the fitted value corresponding to all $y_{ij}$ at $x = x_i$ and let $$\textrm{SSE} = \sum_{i=1}^k \sum_{j=1}^{n_1} (y_{ij} - \hat y_{ij})^2$$ be the error sum of squares with $n - 2$ d.f. Show that SSE can be partitioned as $$\textrm{SSE}=\sum_{i=1}^k n_i(\bar y_i - \hat y_{ij})^2 + \sum_{i=1}^k \sum_{j=1}^{n_1} (y_{ij} - \bar y_i)^2.$$ (_Hint_: $\sum_{j=1}^{n_i}(y_{ij}-\bar y_i) = \sum_{j=1}^{n_i}e_{ij}=0$.) <br><br>The first term in this decomposition is called the _lack of fit sum of squares (SSLOF)_ and the second term is called the _pure error sum of squares (SSPE)_. Note that $\textrm{MSPE} = \textrm{SSPE}/(n - k)$. The d.f. for lack of fit are $(n - 2) - (n - k) = k - 2$.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ///details | (c) Define $\textrm{MSLOF} = \textrm{SSLOF}/(k - 2)$. It can be shown that $$F = \rm \frac{MSLOF}{MSPE}$$ has an $F$-distribution with $k - 2$ and $n - k$ d.f. when there is no lack of fit. Explain how you will use this statistic to test for lack of fit.
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.37
+
+    Do the lack of fit test for the model fitted in part (d) of Exercise 10.20 after making the linearizing transformation.
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 10.38
+
+    In this exercise we derive a CI for the calibration (inverse regression) problem. For specified mean response, $\mu = \mu_0$, let $x = x_0 = (\mu_0 - \beta_0)/\beta_1$ be the corresponding value of $x$. To derive a CI for $x_0$ proceed as follows. Note that 
+    $$\frac{\hat\beta_0 + \hat\beta_1 x_0 - \mu_0}{s\sqrt{\frac{1}{n} + \frac{(x_0 -\bar x)^2}{S_{xx}}}}=T \sim T_{n-2}.$$
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (a) Use this fact to write the probability statement $$\Pr\left[-t_{n-2, \alpha/2} \le T \le t_{n-2, \alpha/2}\right] = \Pr \left[T^2 \le t_{n-2, \alpha/2}^2\right] = 1-\alpha.$$
+
+
+
+    $$\Pr\left\{\frac{(\hat\beta_0 + \hat\beta_1 x_0 - \mu_0)^2}{s^2\left[\frac{1}{n} + \frac{(x_0 -\bar x)^2}{S_{xx}}\right]}\le t_{n-2, \alpha/2}^2\right\}=1-\alpha$$
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    /// details | (b) Solve the quadratic inequality $T^2 \le t_{n-2, \alpha/2}^2$ for the unknown $x_0$. The range of $x_0$ for which the inequality is satisfied gives a $(1 - \alpha)$-level CI for $x_0$. (_Hint_: Find the two roots of the corresponding quadratic equation. Check under what conditions the roots are real and form an interval.)
+
+    ///
+    """
+    )
+    return
+
+
+@app.cell
+def _():
     return
 
 

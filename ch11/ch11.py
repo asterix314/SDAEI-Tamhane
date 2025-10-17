@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.16.5"
+__generated_with = "0.17.0"
 app = marimo.App(width="medium")
 
 
@@ -46,13 +46,21 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    _Linear regression analysis_ begins by fitting a straight line, $y = \beta_0 + \beta_1 x$, to a set of paired data $\{(x_i, y_i), i = 1, 2, \ldots , n\}$ on two numerical variables $x$ and $y$. The linear regression model
-    $$Y_i = \beta_0 + \beta_1 x_i + \epsilon_i\ (i=1,2, \ldots, n)$$
-    has these basic assumptions:
+    The _multiple regression model_ $y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_k x_k$ extends the simple linear regression model to two or more predictor variables. The _least squares (LS) estimate_ of the parameter vector $\bm\beta$ based on $n$ complete sets of observations on all variables equals $\hat{\bm\beta} = (\bm X' \bm X)^{-1}\bm X'\bm y$, where $\bm X$ is the $n \times (k+1)$ matrix of observations on the predictor variables and $\bm y$ is the $n \times 1$ vector of observations on $y$. The _fitted vector_ equals $\hat{\bm y} = \bm X \hat{\bm\beta}$ and the residual vector equals $\bm e = \bm y - \hat{\bm y}$. The _error sum of squares (SSE)_ equals $\text{SSE} = \sum_{i=1}^n (y_i - \hat{y}_i)^2 = \sum_{i=1}^n e_i^2$.
 
-    1. The predictor variable $x$ is regarded as nonrandom because it is assumed to be set by the investigator.
-    2. The mean of $Y_i$ is a linear function of $x_i$.
-    3. The errors $\epsilon_i$ are i.i.d. normal.
+    The _multiple coefficient of determination_, $r^2$, is defined as the ratio of the _regression sum of squares (SSR)_ to the _total sum of squares (SST)_, where $\text{SST} = \sum_{i=1}^n (y_i - \bar{y})^2$, and $\text{SSR} = \text{SST} - \text{SSE}$. The positive square root of $r^2$ is called the _multiple correlation coefficient_.
+
+    The probabilistic model for multiple regression assumes independent $\mathcal{N}(0,\sigma^2)$ random errors. It follows that the $\hat{\beta}_j$ are normally distributed with means $\beta_j$ and variances $\sigma^2 v_{jj}$, where $v_{jj}$ is the $j$th diagonal term of the matrix $\mathbf{V} = (\mathbf{X}'\mathbf{X})^{-1}$. Furthermore,
+
+    \[
+    s^2 = \frac{\text{SSE}}{n - (k+1)}
+    \]
+
+    is an unbiased estimate of $\sigma^2$ and has a $\chi^2$ distribution with $n - (k+1)$ degrees of freedom. We can draw inferences on the $\beta_j$ based on the $t$-distribution with $n - (k+1)$ d.f. For example, a $100(1-\alpha)\%$ confidence interval on $\beta_j$ is given by
+
+    \[
+    \hat{\beta}_j \pm t_{n-(k+1),\alpha/2}\,s\sqrt{v_{jj}}.
+    \]
     """
     )
     return
