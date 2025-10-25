@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.17.0"
+__generated_with = "0.17.2"
 app = marimo.App(width="medium")
 
 
@@ -13,7 +13,6 @@ def _(mo):
 @app.cell(hide_code=True)
 def _():
     from sys import stderr
-    # from dataclasses import dataclass
 
     import marimo as mo
     import polars as pl
@@ -23,16 +22,16 @@ def _():
     from scipy import stats
     from great_tables import GT, md, html
 
-    alt.theme.enable("carbong90")
 
-    # import inspect
+    alt.theme.enable(
+        "carbong90" if mo.app_meta().theme == "dark" else "carbonwhite"
+    )
 
-    # def get_source(func) -> str:
-    #     """Display a function's source code as markdown"""
-    #     source = inspect.getsource(func)
-    #     return f"""```python
-    # {source}
-    # ```"""
+    def img(bname: str, **kw) -> mo.Html:
+        suffix = "dark.svg" if mo.app_meta().theme == "dark" else "light.svg"
+        return mo.center(
+            mo.image(mo.notebook_dir() / f"{bname}-{suffix}", rounded=True, **kw)
+        )
     return GT, alt, col, html, md, mo, np, pl, stats, stderr
 
 
@@ -50,17 +49,49 @@ def _(mo):
 
     The _multiple coefficient of determination_, $r^2$, is defined as the ratio of the _regression sum of squares (SSR)_ to the _total sum of squares (SST)_, where $\text{SST} = \sum_{i=1}^n (y_i - \bar{y})^2$, and $\text{SSR} = \text{SST} - \text{SSE}$. The positive square root of $r^2$ is called the _multiple correlation coefficient_.
 
-    The probabilistic model for multiple regression assumes independent $\mathcal{N}(0,\sigma^2)$ random errors. It follows that the $\hat{\beta}_j$ are normally distributed with means $\beta_j$ and variances $\sigma^2 v_{jj}$, where $v_{jj}$ is the $j$th diagonal term of the matrix $\mathbf{V} = (\mathbf{X}'\mathbf{X})^{-1}$. Furthermore,
+    The probabilistic model for multiple regression assumes independent $\mathcal{N}(0,\sigma^2)$ random errors. It follows that the $\hat{\beta}_j$ are normally distributed with means $\beta_j$ and variances $\sigma^2 v_{jj}$, where $v_{jj}$ is the $j$th diagonal term of the matrix $\bm V = (\bm X'\bm X)^{-1}$. Furthermore,$$s^2 = \frac{\text{SSE}}{n - (k+1)}$$ is an unbiased estimate of $\sigma^2$ and has a $\chi^2$ distribution with $n - (k+1)$ degrees of freedom. We can draw inferences on the $\beta_j$ based on the $t$-distribution with $n - (k+1)$ d.f. For example, a $100(1-\alpha)\%$ confidence interval on $\beta_j$ is given by $$\hat\beta_j \pm t_{n-(k+1),\alpha/2}\,s\sqrt{v_{jj}}.$$
 
-    \[
-    s^2 = \frac{\text{SSE}}{n - (k+1)}
-    \]
+    The _extra sum of squares_ method is useful for deriving $F$-tests on subsets of the $\beta_j$'s. To test the hypothesis that a specified subset of $m < k$ of the $\beta_j$'s equal to zero, we fit the full model which includes all the terms and the partial model which omits the
+    terms corresponding to the $\beta_j$'s set equal to zero. Let $\text{SSE}_k$ and $\text{SSEk}_{k-m}$ denote the error sum of squares for the two models, respectively. Then the $F$-statistic is given by $$F=\frac{(\text{SSE}_{k-m}-\text{SSE}_k)/m}{\text{SSE}_k/[n-(k+1)]}$$ with $m$ and $n - (k + 1)$ d.f. Two special cases of this method are the test of significance on a single $\beta_j$  which is just a $t$-test, and the test of significance on all $\beta_j$'s (not including $\beta_0$), the $F$-statistic for which is given by $$F=\frac{\text{SSR}/k}{\text{SSE}/[n-(k+1)]}=\frac{\text{MSR}}{\text{MSE}}$$ with $k$ and $n - (k + 1)$ d.f.
+    """
+    )
+    return
 
-    is an unbiased estimate of $\sigma^2$ and has a $\chi^2$ distribution with $n - (k+1)$ degrees of freedom. We can draw inferences on the $\beta_j$ based on the $t$-distribution with $n - (k+1)$ d.f. For example, a $100(1-\alpha)\%$ confidence interval on $\beta_j$ is given by
 
-    \[
-    \hat{\beta}_j \pm t_{n-(k+1),\alpha/2}\,s\sqrt{v_{jj}}.
-    \]
+@app.cell
+def _(GT, mo, pl):
+    class MRegression:
+        @staticmethod
+        def ex(dnum: int) -> pl.DataFrame:
+            """load exercise data"""
+            datafile = mo.notebook_dir() / f"Ex11-{dnum}.json"
+            return pl.read_json(datafile).explode(pl.all())
+
+        @staticmethod
+        def gt(d: int | pl.DataFrame) -> GT:
+            """return dataframe as a GT object, preset in dark mode"""
+            df = MRegression.ex(d) if isinstance(d, int) else d
+            gt = df.style.tab_options(
+                table_font_size=11,
+                container_height="40vh",
+            )
+            if mo.app_meta().theme == "dark":
+                gt = gt.tab_options(
+                    table_font_color="white",
+                    table_background_color="#181C1A",
+                )
+
+            return gt
+    return (MRegression,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ### Ex 11.1
+
+    Derive the normal equations for fitting a quadratic equation $y = \beta_0 + \beta_1 x + \beta_2 x^2$ to a set of data $\{(x_i,y_i), i = 1.2, \ldots, n\}$.
     """
     )
     return
@@ -68,11 +99,34 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
-    ### Ex 10.1
+    mo.md(r"""todo""")
+    return
 
-    Tell whether the following mathematical models are theoretical and deterministic or empirical and probabilistic.
+
+@app.cell(hide_code=True)
+def _(MRegression, md, mo):
+    mo.md(
+        rf"""
+    ### Ex 11.2
+
+    Develop a model to predict the college GPA of matriculating freshmen based on their college entrance verbal and mathematics test scores. Data for a random sample of 40 graduating seniors on their college GPA ($y$) along with their college entrance verbal test score ($x_1$) and mathematics test score ($x_2$) expressed as percentiles are shown below.
+
+    {
+            mo.as_html(
+                MRegression.gt(2)
+                .fmt_integer(columns=["Verbal", "Math"])
+                .cols_align(align="center")
+                .cols_hide(columns=["Verbal^2", "Math^2", "Verbal*Math"])
+                .tab_source_note(
+                    source_note=md(
+                        "Source: J. T. McOave and F. H. Dietrich. II (1994). _Statistics_, 6th ed., New York: Dellen-MacMillan. p. 811."
+                    )
+                )
+            )
+        }
+
+    Use a computer package to fit the model $y = \beta_0 + \beta_1 x_1 + \beta_2 x_2$ to these data. What proportion of variability in the college GPA is accounted for by verbal and mathematics
+    test scores?
     """
     )
     return
@@ -80,22 +134,35 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.md(r"""todo""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(MRegression, md, mo):
     mo.md(
-        r"""
-    /// details | 1. Maxwell's equations of electromagnetism
+        rf"""
+    ### Ex 11.3
 
-    theoretical and deterministic
-    ///
+    Are a person's brain size and body size predictive of his/her intelligence? Data on the intelligence ($y$) based on the performance IQ ($\text{{PIQ}}$) scores from the Wechsler Adult
+    Intelligence Scale (revised), brain size ($x_1$) based on the count from MRI scans (given as
+    count/10,000), and body size measured by height ($x_2$) in inches and weight ($x_3$) in pounds
+    on 38 college students are shown below.
 
-    /// details | 2. An econometric model of the U.S. economy.
+    {
+            mo.as_html(
+                MRegression.gt(3)
+                .fmt_integer(columns=["PIQ", "Weight"])
+                .cols_align(align="center")
+                .tab_source_note(
+                    source_note=md(
+                        'Source: L. Willennan, R. Schultz, J. N. Rutledge, and E. Bigler (1991), "In vivo brain size and intelligence," _Intelligence_, _15_. p. 223-228.'
+                    )
+                )
+            )
+        }
 
-    empirical and probabilistic
-    ///
-
-    /// details | 3. A credit scoring model for the probability of a credit applicant being a good risk as a function of selected variables, e.g., income, outstanding debts, etc.
-
-    empirical and probabilistic
-    ///
+    Use a computer package to fit the model $y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3$ to these data. What proportion of variability in PIQ is accounted for by a person's brain size, height, and weight?
     """
     )
     return
@@ -103,59 +170,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
-    ### Ex 10.2
-
-    Tell whether the following mathematical models are theoretical and deterministic or empirical and probabilistic.
-    """
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    /// details | 1. An item response model for the probability of a correct response to an item on a "true-false" test as a function of the item's intrinsic difficulty.
-
-    empirical and probabilistic
-    ///
-
-    /// details | 2. The Cobb-Douglas production function, which relates the output of a firm to its capital and labor inputs.
-
-    empirical and probabilistic
-    ///
-
-    /// details | 3. Kepler's laws of planetary motion.
-
-    theoretical and deterministic
-    ///
-    """
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    ### Ex 10.3
-
-    Give an example of an experimental study in which the explanatory variable is controlled at fixed values, while the response variable is random. Also, give an example of an observational study in which both variables are uncontrolled and random.
-    """
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    - Controlled explanatory variable at fixed values: temperatures in the day as a function of the hours 1h, 2h, ...
-    - Both uncontrolled: humidity as a function of temperature.
-    """
-    )
+    mo.md(r"""todo""")
     return
 
 
