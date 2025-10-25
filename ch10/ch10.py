@@ -22,16 +22,13 @@ def _():
     from scipy import stats
     from great_tables import GT, md, html
 
-    DARK_MODE = True
 
-    if DARK_MODE:
-        alt.theme.enable("carbong90")
-    else:
-        alt.theme.enable("carbonwhite")
-
+    alt.theme.enable(
+        "carbong90" if mo.app_meta().theme == "dark" else "carbonwhite"
+    )
 
     def img(bname: str, **kw) -> mo.Html:
-        suffix = "dark.svg" if DARK_MODE else "light.svg"
+        suffix = "dark.svg" if mo.app_meta().theme == "dark" else "light.svg"
         return mo.center(
             mo.image(mo.notebook_dir() / f"{bname}-{suffix}", rounded=True, **kw)
         )
@@ -45,7 +42,7 @@ def _():
     #     return f"""```python
     # {source}
     # ```"""
-    return DARK_MODE, GT, alt, col, html, img, md, mo, np, pl, stats, stderr
+    return GT, alt, col, html, img, md, mo, np, pl, stats, stderr
 
 
 @app.cell(hide_code=True)
@@ -191,7 +188,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(DARK_MODE, GT, alt, col, mo, pl, stderr):
+def _(GT, alt, col, mo, pl, stderr):
     class Regression:
         @staticmethod
         def linreg(x: pl.Expr, y: pl.Expr) -> pl.Expr:
@@ -258,7 +255,7 @@ def _(DARK_MODE, GT, alt, col, mo, pl, stderr):
                 table_font_size=11,
                 container_height="40vh",
             )
-            if DARK_MODE:
+            if mo.app_meta().theme == "dark":
                 gt = gt.tab_options(
                     table_font_color="white",
                     table_background_color="#181C1A",
@@ -628,7 +625,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(img, mo):
+def _(mo):
     mo.md(
         r"""
     The estimated standard errors of $\hat{\beta}_0$ and $\hat{\beta}_1$ equal
@@ -644,8 +641,9 @@ def _(img, mo):
     A $100(1-\alpha)\%$ _prediction interval_ (PI) for $y_0$ is given by $$\hat y_0 \pm t_{n-2, \alpha/2} s \sqrt{1 + \frac{1}{n} + \frac{(x_0 - \bar{x})^2}{S_{xx}}}.$$
 
     Note that a $100(1-\alpha)\%$ PI for $y_0$ is wider than a CI for $\mu_0$, because $y_0$ is an r.v., while $\mu_0$ is a fixed constant. As the sample size $n \to \infty$, the CI shrinks to the regression line, but the PI shrinks to $$. It will never be a single line because we can never eliminate the inherent variability of the individual points around the line.
+    \"""
+        rf\"""{img("ex38", width=400)}
     """
-        rf"""{img("ex38")}"""
     )
     return
 
@@ -2245,7 +2243,7 @@ def _(img, mo):
     mo.md(
         rf"""
     /// details | (a) Show that the regression model corresponds to $\beta_0 = \mu_2$ and $\beta_1 = \mu_1 - \mu_2$.
-    {img("ex34")}
+    {img("ex34", width=400)}
     The above graph shows the distribution of the 2 samples around $\mu_1$ and $\mu_2$ respectively. In order for the sum of errors to be minimum, the LS line must intersect with $x=0$ on $y=\mu_2$ and with $x=1$ on $y=\mu_1$, leading to $\beta_0 = \mu_2$ and $\beta_1 = \mu_1 - \mu_2$.
     ///
     """
